@@ -1,0 +1,4 @@
+﻿CREATE TABLE SynSet (
+	Id SERIAL PRIMARY KEY,
+	SynSet TEXT[]
+);

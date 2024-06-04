@@ -1,0 +1,45 @@
+
+I want a Tamagui web app with an interface similar to Wordle:
+An alphabetic keyboard with enter and backspace keys, below a row of empty squares (the "entry squares").
+Tapping on the keyboard displays a letter in the next empty square, and tapping backspace clears the rightmost letter.
+On startup the app calls the API's "/game/status" GET endpoint to get a Status object.
+Status.NextGuess contains a Guess object, and Guess.Length is the number of entry squares to show.
+There is room for 10 squares per row, and the rows are centered.
+Above the entry squares row are more static rows of squares (the "guess rows").
+Status.Guesses is an array of Guess objects with the contents of the guess rows, from top to bottom.
+Guess.Characters is an array of Clue objects that tell how to render the guess rows.
+The Clue.Letter is what letter to put in the square, and the Clue.ClueType indicates the color.
+The ClueType enums are AllCorrect (orange), CorrectLetter (blue), Incorrect (no color), and Empty (no color). 
+In a titlebar at the top of the screen is the Status.ClueWord string in quotes.
+Tapping the Enter key calls the "/game/guess" API POST endpoint, sending a JSON payload with a "Guess" key and the characters from the letter squares as a string value.
+If the endpoint returns a 400 the response message is displayed above the entry squares, then the entry squares shake, and the message fades out.
+If the endpoint returns a 200 the "/status" endpoint is called again and the screen is re-rendered.
+If Status.State is Solved, the message "Solved!" is displayed above the entry squares, and the UI becomes nonresponsive.
+The State enums are: Solved and Unsolved.
+
+Now I'd like the squares in the GuessRows to line up in columns.
+The status.indent value says how many squares are to the left of the center.  
+The (GuessRow.offset - 1) value says how many squares the first letter is to the left of the center.
+
+## Deploying the app
+Deploy a certificate (e.g., dotnet dev-certs)
+Configure .NET API appsettings.json URLs
+Configure Next.js URLs
+dotnet run (API)
+yarn web (UI)
+
+TAMAGUI
+
+brew install yarn
+brew install watchman
+npm create tamagui@latest my-app-name --template expo-router (Free - Expo + Next)
+yarn web (Next.js)
+cd apps/expo
+update app.json with project name
+yarn ios
+from top directory, run with "yarn next" or "yarn native"
+
+Customizing app
+
+Edit apps/expo/app/index.tsx to import custom component and replace HomeScreen
+Edit apps/next/app/page.tsx to import custom component and replace HomeScreen

@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="32.0.3" />
+    <PackageReference Include="dbup-postgresql" Version="5.0.40" />
+    <PackageReference Include="Npgsql" Version="8.0.3" />
+    <PackageReference Include="Syn.WordNet" Version="1.0.5" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="Migrations\*" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Remove="migrations\S009aDeleteWordsNoSynsets.sql" />
+	  <None Remove="migrations\S016CreateNonwords.sql" />
+	  <None Remove="migrations\S017CreateBadWordPairs.sql" />
+	  <None Remove="migrations\S018CreateUsers.sql" />
+	  <None Remove="migrations\S019CreateGuess.sql" />
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CsvToPostgres": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\Users\\breta\\Documents\\WordDelta\\CsvToPostgres"
+    }
+  }
+}
