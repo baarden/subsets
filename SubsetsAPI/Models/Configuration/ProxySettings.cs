@@ -1,4 +1,4 @@
-namespace WordDeltaAPI.Models.Configuration;
+namespace SubsetsAPI.Models.Configuration;
 
 public class ProxySettings
 {

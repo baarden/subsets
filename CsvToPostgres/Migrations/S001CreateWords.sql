@@ -9,4 +9,10 @@ CREATE TABLE Words (
 	Trigrams TEXT[],
 	Chars CHAR[],
 	SynSets INT[]
-   );
+);
+
+CREATE TABLE WordFreq (
+    Id SERIAL PRIMARY KEY,
+    Word TEXT,
+    Frequency FLOAT
+);

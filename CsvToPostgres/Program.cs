@@ -16,7 +16,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        string connectionString = "Host=localhost;Username=admin;Password=T9Bt4M7tSB!r;Database=delta4";
+        string connectionString = "Host=localhost;Username=admin;Password=T9Bt4M7tSB!r;Database=subsets2";
 
         RunMigrations(connectionString);
     }
@@ -25,7 +25,7 @@ class Program
     {
         EnsureDatabase.For.PostgresqlDatabase(connectionString);
 
-        var builder =
+        UpgradeEngineBuilder builder =
             DeployChanges.To
                 .PostgresqlDatabase(connectionString)
                 .WithScriptsAndCodeEmbeddedInAssembly(Assembly.GetExecutingAssembly())
@@ -37,9 +37,9 @@ class Program
             c.ScriptExecutor.ExecutionTimeoutSeconds = 60 * 60; // 60 minutes in seconds
         });
 
-        var upgrader = builder.Build();
+        UpgradeEngine upgrader = builder.Build();
 
-        var result = upgrader.PerformUpgrade();
+        DatabaseUpgradeResult result = upgrader.PerformUpgrade();
 
         if (!result.Successful)
         {

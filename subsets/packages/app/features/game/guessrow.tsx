@@ -1,39 +1,62 @@
-import React from 'react';
-import { useWindowDimensions } from 'react-native';
-import { XStack, Stack } from 'tamagui';
-import Square from './square';
-import { Guess } from '../../types';
+import { useState } from 'react'
+import { useWindowDimensions } from 'react-native'
+import { XStack, Stack } from 'tamagui'
+import Square from './square'
+import { Guess, Clue } from '../../types'
 
 interface GuessRowProps {
-  guess: Guess;
-  indent: number;
-  style?: any;
-  onPress?: () => void;
-  isSolved: boolean;
-  isEditable: boolean;
-  squareDim: number;
+  guess: Guess
+  style?: any
+  isSolved: boolean
+  isEditable: boolean
+  editableIndex?: number
+  squareDim: number
+  onPress?: () => void
+  onSquareSelect?: (index: number) => void
 }
 
-const screenWidth : number = 500;
+const GuessRow: React.FC<GuessRowProps> = ({
+  guess,
+  style,
+  isSolved,
+  isEditable,
+  editableIndex = null,
+  squareDim,
+  onPress = null,
+  onSquareSelect = null,
+}) => {
+  const { width: screenWidth } = useWindowDimensions()
+  const leftPad = screenWidth / 2 - (guess.offset + 0.5) * squareDim
 
-const GuessRow: React.FC<GuessRowProps> = ({ guess, indent, style, onPress, isSolved, isEditable, squareDim }) => {
-  const { width: screenWidth } = useWindowDimensions();
-  const leftPad = screenWidth / 2 - (guess.offset + 0.5) * squareDim;
+  const handleSquarePress = (index: number) => {
+    if (onSquareSelect != null) {
+      onSquareSelect(index)
+    }
+  }
 
   return (
     <Stack
       flexDirection="row"
       style={{
         position: 'relative',
-        marginLeft: leftPad
+        marginLeft: leftPad,
+        ...style,
       }}
       onPress={onPress || undefined}
     >
-      {guess.characters.map((clue, index) => (
-            <Square key={index} letter={clue.letter} clueType={clue.clueType} dimension={squareDim} isAnagram={isSolved && (guess.wordIndex == 7 || index == guess.offset - 1) } isEditable={isEditable} />
+      {guess.characters.map((clue: Clue, index: number) => (
+        <Square
+          key={index}
+          letter={clue.letter}
+          clueType={clue.clueType}
+          dimension={squareDim}
+          isAnagram={isSolved && (guess.wordIndex === 7 || index === guess.offset - 1)}
+          isEditable={isEditable && index === editableIndex}
+          onPress={() => handleSquarePress(index)}
+        />
       ))}
     </Stack>
-  );
-};
+  )
+}
 
-export default GuessRow;
+export default GuessRow

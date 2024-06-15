@@ -24,6 +24,7 @@
 	  <None Remove="migrations\S017CreateBadWordPairs.sql" />
 	  <None Remove="migrations\S018CreateUsers.sql" />
 	  <None Remove="migrations\S019CreateGuess.sql" />
+	  <None Remove="migrations\S050CreateIndices.sql" />
 	</ItemGroup>
 
 </Project>

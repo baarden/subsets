@@ -2,8 +2,8 @@ import { Metadata } from 'next'
 import { NextTamaguiProvider } from './NextTamaguiProvider'
 
 export const metadata: Metadata = {
-  title: 'Word Delta',
-  description: 'The Word Delta word game',
+  title: 'Subsets',
+  description: 'The Subsets word game',
   icons: '/favicon.ico',
 }
 

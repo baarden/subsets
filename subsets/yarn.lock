@@ -12248,21 +12248,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"my-tamagui-ios-app@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "my-tamagui-ios-app@workspace:."
-  dependencies:
-    "@babel/runtime": "npm:^7.24.6"
-    "@manypkg/cli": "npm:^0.21.4"
-    check-dependency-version-consistency: "npm:^4.1.0"
-    eslint: "npm:^9.3.0"
-    node-gyp: "npm:^10.1.0"
-    prettier: "npm:^3.2.5"
-    turbo: "npm:^1.13.3"
-    typescript: "npm:^5.4.5"
-  languageName: unknown
-  linkType: soft
-
 "mz@npm:^2.7.0":
   version: 2.7.0
   resolution: "mz@npm:2.7.0"
@@ -15332,6 +15317,21 @@ __metadata:
   checksum: 10/9a75a1b635f8ebf5c0fdc3ffb56f466254f29aa1b2962ab2af776015d3b3bb1732a53edcda0c9ac9b97be96c22459db768feac0d61c1a319cc3954011ca9dcd8
   languageName: node
   linkType: hard
+
+"subsets@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "subsets@workspace:."
+  dependencies:
+    "@babel/runtime": "npm:^7.24.6"
+    "@manypkg/cli": "npm:^0.21.4"
+    check-dependency-version-consistency: "npm:^4.1.0"
+    eslint: "npm:^9.3.0"
+    node-gyp: "npm:^10.1.0"
+    prettier: "npm:^3.2.5"
+    turbo: "npm:^1.13.3"
+    typescript: "npm:^5.4.5"
+  languageName: unknown
+  linkType: soft
 
 "sucrase@npm:3.34.0":
   version: 3.34.0

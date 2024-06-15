@@ -1,5 +1,5 @@
 {
-  "name": "my-tamagui-ios-app",
+  "name": "subsets",
   "private": true,
   "workspaces": [
     "./apps/*",
