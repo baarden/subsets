@@ -25,6 +25,7 @@ export interface Clue {
 
 // Represents a single guess, which is a sequence of clues
 export interface Guess {
+  key: number;
   characters: Clue[];
   length: number;
   wordIndex: number;

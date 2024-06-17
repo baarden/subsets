@@ -1,45 +1,82 @@
-import React from 'react';
+import { useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import { XStack, YStack, Button, Text } from 'tamagui';
 
 interface KeyboardProps {
+  layout: string[][];
   onKeyPress: (key: string) => void; 
 }
 
-const Keyboard: React.FC<KeyboardProps> = ({ onKeyPress }) => {
-  const backspace = "\u232B";
-  const rows = [
-    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-    ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', backspace]
-  ];
+export interface KeyboardHandles {
+  enableKey: (keyLabel: string) => void;
+}
 
-  const Key: React.FC<{ value: string }> = ({ value }) => (
-    <Button
-      onPress={() => onKeyPress(value)}
-      style={{
-        width: value === 'ENTER' || value === backspace ? 50 : 31,
-        height: 55,
-        padding: 0,
-        marginHorizontal: 0.5,
-        borderRadius: 4,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#ddd'
-      }}
-    >
-      <Text color='black' style={{ fontSize: value === 'ENTER' ? 12 : 16 }}>{value}</Text>
-    </Button>
-  );
+const backspace = '\u232B'
+
+const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPress }, ref) => {
+  const [keyStates, setKeyStates] = useState<{ [keyIdentifier: string]: boolean }>({});
+
+  useEffect(() => {
+    const newKeyStates = layout.flatMap((row, rowIndex) =>
+      row.map((key, columnIndex) => `${key}_${rowIndex}_${columnIndex}`)
+    ).reduce((acc, keyIdentifier) => ({
+      ...acc,
+      [keyIdentifier]: true
+    }), {});
+
+    setKeyStates(newKeyStates);
+  }, [layout]);
+
+  const handleKeyPress = (keyIdentifier: string, label: string) => {
+    if (keyStates[keyIdentifier]) {
+      onKeyPress(label);
+      if (keyIdentifier.startsWith(backspace) || keyIdentifier.startsWith('ENTER')) { return }
+      setKeyStates(prev => ({ ...prev, [keyIdentifier]: false }));
+    }
+  };
+
+  const enableKey = (keyLabel: string) => {
+    const keyToEnable = Object.entries(keyStates).find(([key, enabled]) => key.startsWith(keyLabel + '_') && !enabled);
+    if (keyToEnable) {
+      const [keyIdentifier,] = keyToEnable;
+      setKeyStates(prev => ({ ...prev, [keyIdentifier]: true }));
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    enableKey,
+  }));
 
   return (
     <YStack alignItems="center" gap={5} style={{ marginTop: 8 }}>
-      {rows.map((row, index) => (
-        <XStack key={index} gap={5}>
-          {row.map(letter => <Key key={letter} value={letter} />)}
+      {layout.map((row, rowIndex) => (
+        <XStack key={rowIndex} gap={5}>
+          {row.map((letter, columnIndex) => {
+            const keyIdentifier = `${letter}_${rowIndex}_${columnIndex}`;
+            return (
+              <Button
+                key={keyIdentifier}
+                onPress={() => handleKeyPress(keyIdentifier, letter)}
+                style={{
+                  width: letter === 'ENTER' || letter === '\u232B' ? 50 : 31,
+                  height: 55,
+                  padding: 0,
+                  marginHorizontal: 0.5,
+                  borderRadius: 4,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: keyStates[keyIdentifier] ? '#ddd' : '#ccc',
+                }}
+              >
+                <Text color='black' style={{ fontSize: letter === 'ENTER' ? 12 : 16 }}>
+                  {letter}
+                </Text>
+              </Button>
+            );
+          })}
         </XStack>
       ))}
     </YStack>
   );
-};
+});
 
 export default Keyboard;

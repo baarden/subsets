@@ -2,29 +2,22 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { Status, ClueType, Clue, Guess, GuessState } from '../../types'
 
-//const API_BASE_URL = 'https://moosibou.ngrok.app/api';
-const API_BASE_URL = 'http://localhost:5102/api'
+const API_BASE_URL = 'https://moosibou.ngrok.app/api';
 
-export const fetchStatus = async (req: NextApiRequest, res: NextApiResponse): Promise<Status> => {
+export const fetchStatus = async (): Promise<Status> => {
   var data: Status
   try {
     const response = await fetch(`${API_BASE_URL}/status`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
-        Cookie: req.headers.cookie || '',
       },
-      credentials: 'include',
     })
 
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`)
     }
     data = await response.json()
-    const cookies = response.headers.get('set-cookie')
-    if (cookies) {
-      res.setHeader('Set-Cookie', cookies.split(','))
-    }
   } catch (error) {
     console.error('Error fetching game status:', error)
     throw error
@@ -54,7 +47,7 @@ export const fetchStatus = async (req: NextApiRequest, res: NextApiResponse): Pr
         offset: 0,
       }
 
-  var output = {
+  return {
     clueWord: data.clueWord || '',
     guesses: data.guesses.map(
       (guess: any): Guess => ({
@@ -76,8 +69,7 @@ export const fetchStatus = async (req: NextApiRequest, res: NextApiResponse): Pr
     nextGuess: nextGuess,
     state: data.state,
     indent: data.indent,
-  }
-  res.status(200).json(output)
+  };
 }
 
 export const submitGuess = async (guess: string): Promise<void> => {

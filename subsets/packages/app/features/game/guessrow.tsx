@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useWindowDimensions } from 'react-native'
 import { XStack, Stack } from 'tamagui'
+import { useSpring } from '@tamagui/animations-react-native';
 import Square from './square'
 import { Guess, Clue } from '../../types'
 
@@ -26,7 +27,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
   onSquareSelect = null,
 }) => {
   const { width: screenWidth } = useWindowDimensions()
-  const leftPad = screenWidth / 2 - (guess.offset + 0.5) * squareDim
+  const leftPad = screenWidth / 2 - (guess.offset - 0.5) * squareDim
 
   const handleSquarePress = (index: number) => {
     if (onSquareSelect != null) {
@@ -42,11 +43,12 @@ const GuessRow: React.FC<GuessRowProps> = ({
         marginLeft: leftPad,
         ...style,
       }}
+      animation="medium"
       onPress={onPress || undefined}
     >
       {guess.characters.map((clue: Clue, index: number) => (
         <Square
-          key={index}
+          key={'square' + index}
           letter={clue.letter}
           clueType={clue.clueType}
           dimension={squareDim}

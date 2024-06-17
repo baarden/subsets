@@ -23,6 +23,7 @@ public class Status
 
 public class Guess
 {
+    public int Key { get; set; }
     public string GuessWord { get; set; } = string.Empty;
     public List<Clue> Characters { get; set; } = new List<Clue>();
     public int WordIndex { get; set; }

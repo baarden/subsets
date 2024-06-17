@@ -20,12 +20,17 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 services.AddSingleton<GameService>(new GameService(connectionString));
 
 services.AddHttpClient();
-services.AddDistributedMemoryCache();
 builder.Services.AddHttpLogging(logging =>
 {
     logging.LoggingFields = HttpLoggingFields.RequestPath | HttpLoggingFields.ResponseStatusCode;
     logging.RequestBodyLogLimit = 4096;
     logging.ResponseBodyLogLimit = 4096;
+});
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = "localhost:6379";
+    options.InstanceName = "RedisSessionInstance";
 });
 
 services.AddSession(options =>
@@ -34,17 +39,6 @@ services.AddSession(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.IsEssential = true;
     options.IdleTimeout = TimeSpan.FromHours(24);
-});
-
-services.AddCors(options =>
-{
-    options.AddPolicy("AllowNgrok",
-        builder =>
-        {
-            builder.WithOrigins("http://localhost:3000")
-                   .AllowAnyHeader()
-                   .AllowAnyMethod();
-        });
 });
 
 services.Configure<ForwardedHeadersOptions>(options =>
@@ -73,7 +67,6 @@ if (app.Environment.IsDevelopment())
 app.UseSession();
 app.MapControllers();
 app.UseHttpLogging();
-app.UseCors("AllowNgrok");
 
 app.Run();
 

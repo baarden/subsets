@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { YStack, Text, ScrollView, Stack, View } from 'tamagui'
 import TitleBar from './titlebar'
 import GuessRow from './guessrow'
-import Keyboard from './keyboard'
+import Keyboard, { KeyboardHandles } from './keyboard'
 import { fetchStatus, submitGuess } from '../api'
 import { GuessState, Status, Guess, GameState } from '../../types'
 
@@ -14,6 +14,7 @@ const emptyGuess: Guess = {
   state: GuessState.Unsolved,
 }
 const squareWidth: number = 22
+const anagramGuess: number = 7
 const backspace = '\u232B'
 
 export function GameComponent() {
@@ -21,7 +22,9 @@ export function GameComponent() {
   const [status, setStatus] = useState<Status | null>(null)
   const [error, setError] = useState<string>('')
   const [visibleWordIndices, setVisibleWordIndices] = useState<Set<number>>(new Set<number>())
-  const [editableIndex, setEditableIndex] = useState(0) // State for tracking editable index
+  const [editableIndex, setEditableIndex] = useState(0)
+  const [keyboardLayout, setKeyboardLayout] = useState<string[][]>([[]])
+  const keyboardRef = useRef<KeyboardHandles>(null);  
 
   const handleSquareSelected = (index) => {
     setEditableIndex(index)
@@ -36,14 +39,18 @@ export function GameComponent() {
   }, [])
 
   const updateStatus = (statusData: Status) => {
-    setStatus(statusData)
     if (!statusData) {
       setError('')
       return
     }
+    setStatus(statusData)
+    setEditableIndex(0)
+    let keys: string[][] = getKeys(statusData.guesses, statusData.nextGuess.wordIndex, statusData.state)
+    setKeyboardLayout(keys)
     var nextGuess = statusData.nextGuess
     setCurrentGuess(nextGuess)
-    if (nextGuess.wordIndex == 7) {
+    var prevGuess = statusData.guesses.slice(-1)[0]
+    if (nextGuess.wordIndex == 7 && prevGuess.length < 7) {
       setError('Find a channel anagram matching the clue!')
       setTimeout(() => setError(''), 3000)
     } else if (statusData.state == GameState.Solved) {
@@ -52,6 +59,24 @@ export function GameComponent() {
       setError('')
     }
   }
+
+  const getKeys = (guesses: Guess[], wordIndex: number, gameState: GameState): string[][] => {
+    const secondRow = ['ENTER', backspace];
+    if (gameState == GameState.Solved) { return [[]] }
+    let firstRow: string[] = []
+    for (let i = guesses.length - 1; i >= 0; i--) {
+      let guess : Guess = guesses[i];
+      if (wordIndex == anagramGuess) {
+        if (guess.state == GuessState.Solved) {
+          firstRow.push(guess.characters[guess.offset - 1].letter.toUpperCase());
+        }
+      } else if (guess.state == GuessState.Solved) {
+        let letters: string[] = guess.characters.map(c => c.letter.toUpperCase());
+        return [letters.sort(), secondRow];
+      }
+    }
+    return [firstRow.reverse(), secondRow];
+  }  
 
   const handleKeyPress = async (key: string) => {
     if (status === null) return
@@ -70,10 +95,16 @@ export function GameComponent() {
         setTimeout(() => setError(''), 2000)
       }
     } else if (key === backspace) {
-      updateGuessCharacter(editableIndex, ' ')
+      var deletedChar = ' '
       if (editableIndex > 0) {
+        deletedChar = currentGuess.characters[editableIndex - 1].letter
+        updateGuessCharacter(editableIndex - 1, ' ')
         setEditableIndex(editableIndex - 1)
+      } else {
+        deletedChar = currentGuess.characters[editableIndex].letter
+        updateGuessCharacter(editableIndex, ' ')
       }
+      keyboardRef.current?.enableKey(deletedChar.toUpperCase())
     } else if (editableIndex >= 0) {
       updateGuessCharacter(editableIndex, key)
       setEditableIndex(nextEditableIndex())
@@ -95,8 +126,11 @@ export function GameComponent() {
         guessStart = i
       }
     }
-    if (guessEnd < 0 || guessStart < 0) {
+    if (guessStart < 0) {
       return 0
+    }
+    if (guessEnd < 0) {
+      guessEnd = chars.length;
     }
     return guessEnd - guessStart
   }
@@ -113,7 +147,7 @@ export function GameComponent() {
         return i
       }
     }
-    return editableIndex
+    return (editableIndex < chars.length - 1) ? editableIndex + 1 : editableIndex;
   }
 
   const updateGuessCharacter = (index: number, newLetter: string) => {
@@ -132,7 +166,7 @@ export function GameComponent() {
       <Stack
         alignSelf="center"
         position="absolute"
-        top={0} // Adjust this value to position the message correctly
+        top={ status?.state == GameState.Solved ? 0 : -1 * squareWidth - 5}
         bg="black"
         p="$2"
         zIndex={2}
@@ -145,51 +179,70 @@ export function GameComponent() {
     )
   }
 
+  const renderSpacer = () => (
+    <Stack
+      width={200}
+      height={10} 
+      backgroundColor="darkgrey"
+      margin={4}
+      borderRadius={5}
+      alignSelf='center'
+      />
+  );
+  
+  const renderGuessRow = (guess, shouldInsertSpacer) => (
+    <>
+      <GuessRow
+        key={'guessrow_' + guess.key}
+        style={{ display: 'flex' }}
+        guess={guess}
+        onPress={() => toggleVisibility(guess.wordIndex)}
+        isSolved={status?.state === GameState.Solved}
+        isEditable={false}
+        squareDim={squareWidth}
+      />
+      {shouldInsertSpacer && renderSpacer()}
+      </>
+  );
+  
   const renderGuessRows = () => {
     if (!status) {
-      return null
+      return null;
     }
+  
+    const offset = status.guesses.find(g => g.length === 3)?.offset || 0;
+  
     return (
-      <>
+      <YStack>
         <Stack
           position="absolute"
           top={0}
           bottom={0}
           left="50%"
-          transform={[{ translateX: 2 - (status.guesses[0].offset + 0.5) * squareWidth }]}
+          transform={[{ translateX: 2 + (-1 * offset + 0.5) * squareWidth }]}
           width={3 * squareWidth - 4} // Width for three columns
           backgroundColor="$blue5Light"
           zIndex={0}
         />
-        {status.guesses.map(
-          (guess, index) =>
-            (visibleWordIndices.has(guess.wordIndex) ||
-              guess.wordIndex === status.nextGuess.wordIndex ||
-              guess.state === GuessState.Solved) && (
-              <GuessRow
-                style={{
-                  display:
-                    visibleWordIndices.has(guess.wordIndex) ||
-                    guess.wordIndex === status.nextGuess.wordIndex ||
-                    guess.state === GuessState.Solved
-                      ? 'flex'
-                      : 'none',
-                }}
-                key={index}
-                guess={guess}
-                onPress={() => toggleVisibility(guess.wordIndex)}
-                isSolved={status.state == GameState.Solved}
-                isEditable={false}
-                squareDim={squareWidth}
-              />
-            )
-        )}
-      </>
-    )
+        {status.guesses.map((guess, index) => {
+          const isVisible =
+            visibleWordIndices.has(guess.wordIndex) ||
+            guess.wordIndex === status.nextGuess.wordIndex ||
+            guess.state === GuessState.Solved;
+          if (!isVisible) {
+            return null;
+          }
+  
+          const shouldInsertSpacer = (status.state != GameState.Solved && guess.state == GuessState.Solved && guess.wordIndex === anagramGuess - 1);
+  
+          return renderGuessRow(guess, shouldInsertSpacer);
+        })}
+      </YStack>
+    );
   }
 
   const toggleVisibility = (wordIndex: number) => {
-    console.log(`Toggles: ${Array.from(visibleWordIndices)}`)
+    return;
     setVisibleWordIndices((prevIndices) => {
       const newIndices = new Set(prevIndices)
       if (newIndices.has(wordIndex)) {
@@ -247,7 +300,11 @@ export function GameComponent() {
                 squareDim={squareWidth}
               />
               {renderError()}
-              <Keyboard onKeyPress={handleKeyPress} />
+              <Keyboard 
+                ref={keyboardRef}              
+                layout={keyboardLayout}
+                onKeyPress={handleKeyPress}
+              />
             </YStack>
           </>
         )}

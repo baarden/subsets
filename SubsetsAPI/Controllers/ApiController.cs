@@ -9,6 +9,7 @@ namespace SubsetsAPI.Controllers;
 [Route("api")]
 public partial class ApiController : ControllerBase
 {
+    // RegularExpressions turns the class into a partial
     [GeneratedRegex(@"^ *[a-zA-Z]{3,7} *$")]
     private static partial Regex GuessRegex();
 
@@ -28,8 +29,12 @@ public partial class ApiController : ControllerBase
         if (userId == null) { return Unauthorized("User not found."); }
 
         Status status;
-        (status, _) = _gameService.GetStatus((int)userId);
-        return Ok(status);
+        try {
+            (status, _) = _gameService.GetStatus((int)userId);
+            return Ok(status);
+        } catch (Exception e) {
+            return BadRequest(e.Message);
+        }
     }
 
     [HttpPost("guess")]
@@ -53,7 +58,10 @@ public partial class ApiController : ControllerBase
             return BadRequest("Invalid guess length");
         }
 
-        if (status.Guesses.Any(g => g.GuessWord.Trim() == guess.Trim()))
+        if (status.Guesses.Any(g => (
+            g.GuessWord.Trim() == guess.Trim()
+            && g.WordIndex == status.NextGuess.WordIndex
+            )))
         {
             return BadRequest("Already guessed");
         }

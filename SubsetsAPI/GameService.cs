@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.OpenApi.Services;
 using Npgsql;
 using SubsetsAPI.Models.ValueObjects;
 
@@ -51,14 +52,16 @@ public class GameService
         var gameData = new GameDayDataProvider(today, _connectionString);
         status.ClueWord = gameData.ClueWord;
 
+        int key = 0;
         AddStartingGuess(status, gameData);
 
-        var guessDataList = FetchGuessData(userId, today);
+        List<GuessData> guessDataList = FetchGuessData(userId, today);
         int maxWordIndex = 2;
         foreach (var guessData in guessDataList)
         {
-            int offset = (guessData.ReferenceWordIndex == _MaxWordIndex + 1) ? (int)(guessData.GuessText.Length / 2) : gameData.Offset(guessData.ReferenceWordIndex);
+            int offset = (guessData.ReferenceWordIndex == _MaxWordIndex) ? (int)(guessData.GuessText.Length / 2) : gameData.Offset(guessData.ReferenceWordIndex);
             Guess guess = GetGuess(
+                ++key,
                 guessData.GuessText,
                 gameData.ReferenceWord(guessData.ReferenceWordIndex), 
                 guessData.ReferenceWordIndex, 
@@ -69,16 +72,21 @@ public class GameService
             maxWordIndex = (guess.State == GuessState.Solved) ? guess.WordIndex + 1 : guess.WordIndex;
         }
 
-        status.State = (maxWordIndex <= _MaxWordIndex + 1) ? GuessState.Unsolved : GuessState.Solved;
+        status.State = (maxWordIndex <= _MaxWordIndex) ? GuessState.Unsolved : GuessState.Solved;
         string? refWord = null;
 
         if (status.State == GuessState.Unsolved)
         {
             refWord = gameData.ReferenceWord(maxWordIndex);
-            int offset = (maxWordIndex == _MaxWordIndex + 1) ? (int)(refWord.Length / 2) : gameData.Offset(maxWordIndex);
-            status.NextGuess = GetGuess("", refWord, maxWordIndex, offset);
+            int offset = (maxWordIndex == _MaxWordIndex) ? (int)(refWord.Length / 2) : gameData.Offset(maxWordIndex);
+            status.NextGuess = GetGuess(++key, "", refWord, maxWordIndex, offset);
+        } else {
+            int[] newOrder = gameData.AnagramSortOrder();
+            List<Guess> guesses = newOrder.SelectMany(i => status.Guesses.Where(g => g.WordIndex == i + 1)).ToList();
+            status.Guesses = guesses;
         }
-
+ 
+        // Indent should be relative to the leftmost position of the 3-letter word; see also offset
         status.Indent = Enumerable.Range(1, _MaxWordIndex)
                          .Select(x => gameData.Offset(x))
                          .Max();
@@ -90,7 +98,7 @@ public class GameService
     {
         int index = 1;
         string startWord = gameData.ReferenceWord(index);
-        status.Guesses.Add(GetGuess(startWord, startWord, index, gameData.Offset(index)));
+        status.Guesses.Add(GetGuess(0, startWord, startWord, index, gameData.Offset(index)));
     }
 
     private List<GuessData> FetchGuessData(int userId, DateOnly playDate)
@@ -124,10 +132,11 @@ public class GameService
         return guesses;
     }
 
-    private static Guess GetGuess(string guess, string referenceWord, int wordIndex, int offset)
+    private static Guess GetGuess(int key, string guess, string referenceWord, int wordIndex, int offset)
     {
         var newGuess = new Guess
         {
+            Key = key,
             GuessWord = guess,
             WordIndex = wordIndex,
             Length = referenceWord.Length,
@@ -244,27 +253,7 @@ public class GameService
             return false;
         }
 
-        string duplicateQuery = @"
-            select 1
-            from guess
-            where userid = @userId
-                and guessdate = @playDate
-                and TRIM(guess) = @guess;
-        ";
-
-        using var duplicateCmd = new NpgsqlCommand(duplicateQuery, conn);
-        duplicateCmd.Parameters.AddWithValue("@userId", userId);
-        duplicateCmd.Parameters.AddWithValue("@playDate", guessDate);
-        duplicateCmd.Parameters.AddWithValue("@guess", trimGuess);
-
-        var duplicateCount = Convert.ToInt32(duplicateCmd.ExecuteScalar());
-        if (duplicateCount > 0)
-        {
-            errorMessage = "Already guessed";
-            return false;
-        }
-
-        Guess guessData = GetGuess(guess, refWord, guessWordIndex, 0);
+        Guess guessData = GetGuess(0, guess, refWord, guessWordIndex, 0);
         bool solved = guessData.Characters.All(c => c.Type == ClueType.AllCorrect);
 
         string insertQuery = @"
@@ -311,6 +300,32 @@ public class GameDayDataProvider
         return (index == _MaxWordIndex) ? 0 : _gameDayData.AnagramOffsets[index - 1];
     }
 
+    public int[] AnagramSortOrder()
+    {
+        var words = _gameDayData.SubsetWords;
+        var offsets = _gameDayData.AnagramOffsets;
+        var charToIndices = new Dictionary<char, SortedList<int, int>>();
+        for (int i = 0; i < words.Length; i++) {
+            string word = words[i];
+            char chr = word[offsets[i] - 1];
+            try {
+                charToIndices[chr].Add(i, i);            
+            } catch (KeyNotFoundException) {
+                charToIndices[chr] = new SortedList<int, int>() { {i, i} };
+            }
+        }
+
+        var anagram = _gameDayData.Anagram;
+        var sortOrder = new int[anagram.Length];
+        for (int i = 0; i < anagram.Length; i++)
+        {
+            SortedList<int, int> sortedIndices = charToIndices[anagram[i]];
+            sortOrder[i] = sortedIndices.Keys[0];
+            sortedIndices.RemoveAt(0);
+        }
+        return sortOrder;
+    }
+
     private GameDayData GetGameDayData(DateOnly playDate)
     {
         using var conn = new NpgsqlConnection(_connectionString);
@@ -336,6 +351,6 @@ public class GameDayDataProvider
             return new GameDayData(ClueWord: clueWord, Anagram: anagram, AnagramOffsets: anagramOffsets, SubsetWords: words);
         }
 
-        throw new Exception("Unable to get data for requested date");
+        throw new Exception("No game data today");
     }
 }
