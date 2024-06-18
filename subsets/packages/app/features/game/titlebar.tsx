@@ -1,26 +1,33 @@
 import React from 'react';
-import { Stack, Text } from 'tamagui';
+import { Button, Stack, XStack, YStack, Text } from 'tamagui';
+import { Info } from '@tamagui/lucide-icons'
 
 interface TitleBarProps {
     clueWord: string;
+    onInfoPress: () => void;
 }
 
-const TitleBar: React.FC<TitleBarProps> = ({ clueWord }) => {
+const TitleBar: React.FC<TitleBarProps> = ({ clueWord, onInfoPress }) => {
     return (
-        <Stack
-            alignItems="center"
-            justifyContent="center"
-            padding={5}
-            backgroundColor="#f0f0f0"
-        >
-            <Text color='black' fontSize={12} textAlign="center">
-                CHANNEL CLUE
-            </Text>
-            <Text color='black' fontSize={18} textAlign="center">
-                “{clueWord}”
-            </Text>
+        <XStack justifyContent="space-between" alignItems="center" padding={5} backgroundColor="#f0f0f0">
+            <Stack flex={1} />
+            <YStack
+                alignItems="center"
+                justifyContent="center"
+                padding={5}
+                backgroundColor="#f0f0f0"
+                flex={12}
+            >
+                <Text color='black' fontSize={12} textAlign="center">
+                    CROSSCUT CLUE
+                </Text>
+                <Text color='black' fontSize={18} textAlign="center">
+                    “{clueWord}”
+                </Text>
 
-        </Stack>
+            </YStack>
+            <Button icon={Info} theme="light" onPress={onInfoPress} />
+        </XStack>
     );
 };
 

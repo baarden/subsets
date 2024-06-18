@@ -39,7 +39,7 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemeProvider
       { /* change default theme (system) here: */ }
-      { /* defaultTheme="light" */ }
+      defaultTheme="light"
       onChangeTheme={(next) => {
         setTheme(next as any)
       }}

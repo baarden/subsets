@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { Status, ClueType, Clue, Guess, GuessState } from '../../types'
 
-const API_BASE_URL = 'https://moosibou.ngrok.app/api';
+const API_BASE_URL = 'https://subsets.ngrok.app/api';
 
 export const fetchStatus = async (): Promise<Status> => {
   var data: Status

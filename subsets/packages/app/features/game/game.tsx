@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { YStack, Text, ScrollView, Stack, View } from 'tamagui'
+import { YStack, Text, ScrollView, Stack, Theme } from 'tamagui'
 import TitleBar from './titlebar'
 import GuessRow from './guessrow'
 import Keyboard, { KeyboardHandles } from './keyboard'
+import Drawer from './drawer'
 import { fetchStatus, submitGuess } from '../api'
 import { GuessState, Status, Guess, GameState } from '../../types'
 
 const emptyGuess: Guess = {
+  key: 0,
   characters: [],
   offset: 0,
   length: 0,
@@ -24,6 +26,8 @@ export function GameComponent() {
   const [visibleWordIndices, setVisibleWordIndices] = useState<Set<number>>(new Set<number>())
   const [editableIndex, setEditableIndex] = useState(0)
   const [keyboardLayout, setKeyboardLayout] = useState<string[][]>([[]])
+  const [drawerVisible, setDrawerVisible] = useState(false);
+
   const keyboardRef = useRef<KeyboardHandles>(null);  
 
   const handleSquareSelected = (index) => {
@@ -31,6 +35,7 @@ export function GameComponent() {
   }
 
   useEffect(() => {
+    setDrawerVisible(true)
     fetchStatus()
       .then((statusData) => {
         updateStatus(statusData)
@@ -158,6 +163,14 @@ export function GameComponent() {
     })
   }
 
+  const handleDrawerClose = () => {
+    setDrawerVisible(false);
+  };
+
+  const handleInfoPress = () => {
+    setDrawerVisible(true);
+  };
+
   const renderError = () => {
     if (!error) {
       return null
@@ -255,11 +268,14 @@ export function GameComponent() {
   }
 
   return (
+    <Theme name="light">
     <YStack f={1} bg="$background">
       {/* TitleBar at the top */}
       <Stack position="absolute" top={0} left={0} right={0} bg="$background" zIndex={1}>
-        {status && <TitleBar clueWord={status.clueWord} />}
+        {status && <TitleBar clueWord={status.clueWord} onInfoPress={handleInfoPress} />}
       </Stack>
+
+      <Drawer visible={drawerVisible} onClose={handleDrawerClose} />
 
       {/* GuessRows in the middle and scrollable */}
       <ScrollView
@@ -310,5 +326,6 @@ export function GameComponent() {
         )}
       </YStack>
     </YStack>
+    </Theme>
   )
 }
