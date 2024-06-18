@@ -57,7 +57,7 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
                 key={keyIdentifier}
                 onPress={() => handleKeyPress(keyIdentifier, letter)}
                 style={{
-                  width: letter === 'ENTER' || letter === '\u232B' ? 50 : 31,
+                  width: rowIndex == 1 ? 50 : 31,
                   height: 55,
                   padding: 0,
                   marginHorizontal: 0.5,

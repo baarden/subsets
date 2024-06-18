@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { YStack, Text, ScrollView, Stack, Theme } from 'tamagui'
+import {} from '@my/ui/src/'
 import TitleBar from './titlebar'
 import GuessRow from './guessrow'
 import Keyboard, { KeyboardHandles } from './keyboard'
@@ -18,6 +19,7 @@ const emptyGuess: Guess = {
 const squareWidth: number = 22
 const anagramGuess: number = 7
 const backspace = '\u232B'
+const shuffle = '\uD83D\uDD00'
 
 export function GameComponent() {
   const [currentGuess, setCurrentGuess] = useState<Guess>(emptyGuess)
@@ -66,7 +68,7 @@ export function GameComponent() {
   }
 
   const getKeys = (guesses: Guess[], wordIndex: number, gameState: GameState): string[][] => {
-    const secondRow = ['ENTER', backspace];
+    const secondRow = ['ENTER', shuffle, backspace];
     if (gameState == GameState.Solved) { return [[]] }
     let firstRow: string[] = []
     for (let i = guesses.length - 1; i >= 0; i--) {
@@ -99,21 +101,32 @@ export function GameComponent() {
         setError('Incomplete guess')
         setTimeout(() => setError(''), 2000)
       }
+    } else if (key == shuffle) {
+      let keys = [shuffleArray(keyboardLayout[0]), keyboardLayout[1]]
+      setKeyboardLayout(keys)
+      currentGuess.characters.forEach(clue => {
+        clue.letter = ' '
+      })
     } else if (key === backspace) {
-      var deletedChar = ' '
+      let deletedChar = currentGuess.characters[editableIndex].letter
+      updateGuessCharacter(editableIndex, ' ')
       if (editableIndex > 0) {
-        deletedChar = currentGuess.characters[editableIndex - 1].letter
-        updateGuessCharacter(editableIndex - 1, ' ')
         setEditableIndex(editableIndex - 1)
-      } else {
-        deletedChar = currentGuess.characters[editableIndex].letter
-        updateGuessCharacter(editableIndex, ' ')
       }
       keyboardRef.current?.enableKey(deletedChar.toUpperCase())
     } else if (editableIndex >= 0) {
       updateGuessCharacter(editableIndex, key)
       setEditableIndex(nextEditableIndex())
     }
+  }
+
+  function shuffleArray(array) {
+    let shuffledArray = array.slice();
+    for (let i = shuffledArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledArray[i], shuffledArray[j]] = [shuffledArray[j], shuffledArray[i]];
+    }
+    return shuffledArray;
   }
 
   const currentGuessLength = (): number => {

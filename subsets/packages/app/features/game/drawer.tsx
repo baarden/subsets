@@ -31,12 +31,13 @@ const Drawer = ({ visible, onClose }) => {
         padding={16}
       >
         <XStack justifyContent="flex-end">
-          <Text fontSize={24} fontWeight="bold" flex={5}>How To Play</Text>
+          <Text fontSize={24} fontWeight="bold" flex={5}>How To Play Subsets</Text>
           <Button size="$2" icon={XCircle} theme="light" onPress={onClose} flex={1} />
         </XStack>
         <YStack padding={16}>
-          <Text marginTop={8}>Guess the 5 Subsets of the starting word.</Text>
-          <Text marginTop={8}>Then use the clue to guess the Subset that crosscuts all 6 words.</Text>
+            <Text marginTop={8}>A Subset is a word only using letters from another longer word.</Text>
+            <Text marginTop={8}>Guess the 5 Subsets of the starting word.</Text>
+            <Text marginTop={8}>Then use the clue to guess a Subset that crosscuts all 6 words.</Text>
           <YStack marginVertical={16}>
             <ListItem icon={ChevronRight}>
               <Text>Each guess must be a subset of the letters in the previous word.</Text>
@@ -45,7 +46,7 @@ const Drawer = ({ visible, onClose }) => {
               <Text>A guess must be a valid word of at least 3 letters.</Text>
             </ListItem>
             <ListItem icon={ChevronRight}>
-              <Text>The color of the tile shows how close your guess was to the Subset.</Text>
+              <Text>The color of the tile shows how close your guess was to the correct answer.</Text>
             </ListItem>
           </YStack>
           <Image src="/example.png" alt="Example" width={266} height={61} />
