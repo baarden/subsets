@@ -107,6 +107,7 @@ export function GameComponent() {
       currentGuess.characters.forEach(clue => {
         clue.letter = ' '
       })
+      setEditableIndex(0)
     } else if (key === backspace) {
       let deletedChar = currentGuess.characters[editableIndex].letter
       updateGuessCharacter(editableIndex, ' ')
@@ -222,7 +223,7 @@ export function GameComponent() {
         key={'guessrow_' + guess.key}
         style={{ display: 'flex' }}
         guess={guess}
-        onPress={() => toggleVisibility(guess.wordIndex)}
+        onRowPress={() => toggleVisibility(guess.wordIndex)}
         isSolved={status?.state === GameState.Solved}
         isEditable={false}
         squareDim={squareWidth}

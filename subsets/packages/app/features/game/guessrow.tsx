@@ -12,7 +12,7 @@ interface GuessRowProps {
   isEditable: boolean
   editableIndex?: number
   squareDim: number
-  onPress?: () => void
+  onRowPress?: () => void
   onSquareSelect?: (index: number) => void
 }
 
@@ -23,7 +23,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
   isEditable,
   editableIndex = null,
   squareDim,
-  onPress = null,
+  onRowPress = null,
   onSquareSelect = null,
 }) => {
   const { width: screenWidth } = useWindowDimensions()
@@ -44,7 +44,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
         ...style,
       }}
       animation="medium"
-      onPress={onPress || undefined}
+      onPress={onRowPress || undefined}
     >
       {guess.characters.map((clue: Clue, index: number) => (
         <Square
@@ -52,7 +52,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
           letter={clue.letter}
           clueType={clue.clueType}
           dimension={squareDim}
-          isAnagram={isSolved && (guess.wordIndex === 7 || index === guess.offset - 1)}
+          isAnagram={isSolved && index === guess.offset - 1}
           isEditable={isEditable && index === editableIndex}
           onPress={() => handleSquarePress(index)}
         />
