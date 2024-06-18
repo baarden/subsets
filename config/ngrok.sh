@@ -1,1 +1,1 @@
-ngrok http --domain=moosibou.ngrok.app 8080
+ngrok http --domain=subsets.ngrok.app 8080
