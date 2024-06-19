@@ -13,3 +13,8 @@ At present the web app expects to be started in a particular configuration:
 - An Ngrok tunnel is running and directing traffic to localhost:8080.
 
 To run the app, send a request to the ngrok forwarding address.
+
+To run the app in production, issue these two commands:
+
+- yarn web:prod
+- yarn web:prod:serve

@@ -228,7 +228,7 @@ export function GameComponent() {
         style={{ display: 'flex' }}
         guess={guess}
         onRowPress={() => toggleVisibility(guess.wordIndex)}
-        isSolved={status?.state === GameState.Solved}
+        isSolved={ guess.state === GuessState.Solved }
         isEditable={false}
         squareDim={squareWidth}
       />
@@ -275,6 +275,20 @@ export function GameComponent() {
     })
   }
 
+  const ScoringPanel = () => (
+    <Stack
+      position="absolute"
+      top={60}
+      left={0}
+      width={100}
+      height="auto"
+      backgroundColor="$gray2Light"
+      zIndex={0} // Make sure it's below other elements
+    >
+      <Text fontSize={10}>GUESSES: {status?.guesses.length}</Text>
+    </Stack>
+  );  
+
   return (
     <Theme name="light">
     <YStack f={1} bg="$background">
@@ -284,6 +298,8 @@ export function GameComponent() {
       </Stack>
 
       <Drawer visible={drawerVisible} onClose={handleDrawerClose} />
+
+      <ScoringPanel />
 
       {/* GuessRows in the middle and scrollable */}
       <ScrollView
