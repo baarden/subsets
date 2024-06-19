@@ -116,6 +116,10 @@ export function GameComponent() {
       }
       keyboardRef.current?.enableKey(deletedChar.toUpperCase())
     } else if (editableIndex >= 0) {
+      let deletedChar = currentGuess.characters[editableIndex].letter
+      if (deletedChar !== ' ') {
+        keyboardRef.current?.enableKey(deletedChar.toUpperCase())
+      }
       updateGuessCharacter(editableIndex, key)
       setEditableIndex(nextEditableIndex())
     }
@@ -236,21 +240,9 @@ export function GameComponent() {
     if (!status) {
       return null;
     }
-  
-    const offset = status.guesses.find(g => g.length === 3)?.offset || 0;
-  
+    
     return (
       <YStack>
-        <Stack
-          position="absolute"
-          top={0}
-          bottom={0}
-          left="50%"
-          transform={[{ translateX: 2 + (-1 * offset + 0.5) * squareWidth }]}
-          width={3 * squareWidth - 4} // Width for three columns
-          backgroundColor="$blue5Light"
-          zIndex={0}
-        />
         {status.guesses.map((guess, index) => {
           const isVisible =
             visibleWordIndices.has(guess.wordIndex) ||
@@ -260,7 +252,10 @@ export function GameComponent() {
             return null;
           }
   
-          const shouldInsertSpacer = (status.state != GameState.Solved && guess.state == GuessState.Solved && guess.wordIndex === anagramGuess - 1);
+          const shouldInsertSpacer =
+            status.state != GameState.Solved
+            && guess.state == GuessState.Solved
+            && guess.wordIndex === anagramGuess - 1
   
           return renderGuessRow(guess, shouldInsertSpacer);
         })}
@@ -269,7 +264,6 @@ export function GameComponent() {
   }
 
   const toggleVisibility = (wordIndex: number) => {
-    return;
     setVisibleWordIndices((prevIndices) => {
       const newIndices = new Set(prevIndices)
       if (newIndices.has(wordIndex)) {
