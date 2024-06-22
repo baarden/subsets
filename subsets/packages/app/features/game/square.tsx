@@ -27,7 +27,7 @@ const Square = ({
   isEditable = false,
   onPress,
 }) => {
-  const squareMargin = 2
+  const squareMargin = dimension / 10
   const squareDim = dimension - 2 * squareMargin
 
   const getBackgroundColor = () => {

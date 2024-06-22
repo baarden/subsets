@@ -1,23 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { YStack, Text, ScrollView, Stack, Theme } from 'tamagui'
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { XStack, YStack, Text, ScrollView, Stack, Theme, Button } from 'tamagui'
+import { Share } from '@tamagui/lucide-icons'
 import {} from '@my/ui/src/'
 import TitleBar from './titlebar'
 import GuessRow from './guessrow'
 import Keyboard, { KeyboardHandles } from './keyboard'
 import Drawer from './drawer'
 import { fetchStatus, submitGuess } from '../api'
-import { GuessState, Status, Guess, GameState } from '../../types'
+import { GuessState, Status, Guess, GameState, emptyGuess, ClueType } from '../../types'
 
-const emptyGuess: Guess = {
-  key: 0,
-  characters: [],
-  offset: 0,
-  length: 0,
-  wordIndex: 0,
-  state: GuessState.Unsolved,
-}
 const squareWidth: number = 22
 const anagramGuess: number = 7
+const bottomPanelHeight: number = 160
+const scoringPanelWidth: number = 140
 const backspace = '\u232B'
 const shuffle = '\uD83D\uDD00'
 
@@ -29,21 +24,37 @@ export function GameComponent() {
   const [editableIndex, setEditableIndex] = useState(0)
   const [keyboardLayout, setKeyboardLayout] = useState<string[][]>([[]])
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [gameComponentWidth, setGameComponentWidth] = useState(0);
 
   const keyboardRef = useRef<KeyboardHandles>(null);  
+  const gameComponentRef = useRef<HTMLDivElement>(null);
+  const showLetters = true, hideLetters = false;
+  const showRows = true, hideRows = false;
+  const orderByKey = true, orderByPosition = false;
 
   const handleSquareSelected = (index) => {
     setEditableIndex(index)
   }
 
   useEffect(() => {
-    setDrawerVisible(true)
+    const hasVisited = localStorage.getItem('hasVisited');
+    if (!hasVisited) {
+      setDrawerVisible(true);
+      localStorage.setItem('hasVisited', 'true');
+    }
+    
     fetchStatus()
       .then((statusData) => {
         updateStatus(statusData)
       })
       .catch((err) => setError('Failed to fetch game status'))
   }, [])
+
+  useLayoutEffect(() => {
+    if (gameComponentRef.current) {
+      setGameComponentWidth(gameComponentRef.current.offsetWidth);
+    }
+  }, []);
 
   const updateStatus = (statusData: Status) => {
     if (!statusData) {
@@ -71,14 +82,23 @@ export function GameComponent() {
     const secondRow = ['ENTER', shuffle, backspace];
     if (gameState == GameState.Solved) { return [[]] }
     let firstRow: string[] = []
+    let filterLetter : string = "";
     for (let i = guesses.length - 1; i >= 0; i--) {
-      let guess : Guess = guesses[i];
+      const guess : Guess = guesses[i];
+      if (wordIndex == guess.wordIndex) {
+        let badChar = guess.characters.filter(c => c.clueType === ClueType.Incorrect);
+        if (badChar.length > 0) {
+          filterLetter = badChar[0].letter;
+        }
+      }
       if (wordIndex == anagramGuess) {
         if (guess.state == GuessState.Solved) {
           firstRow.push(guess.characters[guess.offset - 1].letter.toUpperCase());
         }
       } else if (guess.state == GuessState.Solved) {
-        let letters: string[] = guess.characters.map(c => c.letter.toUpperCase());
+        let letters: string[] = guess.characters
+          .filter(c => c.letter !== filterLetter)
+          .map(c => c.letter.toUpperCase());
         return [letters.sort(), secondRow];
       }
     }
@@ -198,10 +218,10 @@ export function GameComponent() {
         alignSelf="center"
         position="absolute"
         top={ status?.state == GameState.Solved ? 0 : -1 * squareWidth - 5}
-        bg="black"
-        p="$2"
+        backgroundColor={'black'}
+        padding="$2"
         zIndex={2}
-        alignItems="center" // Center children horizontally
+        alignItems="center"
       >
         <Text color="white" fontSize="$1">
           {error}
@@ -221,7 +241,13 @@ export function GameComponent() {
       />
   );
   
-  const renderGuessRow = (guess, shouldInsertSpacer) => (
+  const renderGuessRow = (
+    guess: Guess,
+    shouldInsertSpacer: boolean,
+    squareDim: number,
+    parentWidth: number,
+    showLetters: boolean
+  ) => (
     <>
       <GuessRow
         key={'guessrow_' + guess.key}
@@ -230,21 +256,34 @@ export function GameComponent() {
         onRowPress={() => toggleVisibility(guess.wordIndex)}
         isSolved={ guess.state === GuessState.Solved }
         isEditable={false}
-        squareDim={squareWidth}
+        parentWidth={parentWidth}
+        showLetters={showLetters}
+        squareDim={squareDim}
       />
       {shouldInsertSpacer && renderSpacer()}
       </>
   );
   
-  const renderGuessRows = () => {
+  const renderGuessRows = (
+    squareDim: number, 
+    parentWidth: number, 
+    showLetters: boolean, 
+    showRows: boolean,
+    orderByKey: boolean
+  ) => {
     if (!status) {
       return null;
+    }
+    let guesses = status.guesses
+    if (orderByKey) {
+      guesses = guesses.slice().sort((a, b) => a.key - b.key);
     }
     
     return (
       <YStack>
-        {status.guesses.map((guess, index) => {
+        {guesses.map((guess, _) => {
           const isVisible =
+            showRows ||
             visibleWordIndices.has(guess.wordIndex) ||
             guess.wordIndex === status.nextGuess.wordIndex ||
             guess.state === GuessState.Solved;
@@ -256,8 +295,9 @@ export function GameComponent() {
             status.state != GameState.Solved
             && guess.state == GuessState.Solved
             && guess.wordIndex === anagramGuess - 1
+            && showLetters
   
-          return renderGuessRow(guess, shouldInsertSpacer);
+          return renderGuessRow(guess, shouldInsertSpacer, squareDim, parentWidth, showLetters);
         })}
       </YStack>
     );
@@ -275,25 +315,38 @@ export function GameComponent() {
     })
   }
 
-  const ScoringPanel = () => (
-    <Stack
-      position="absolute"
-      top={60}
-      left={0}
-      width={100}
-      height="auto"
-      backgroundColor="$gray2Light"
-      zIndex={0} // Make sure it's below other elements
-    >
-      <Text fontSize={10}>GUESSES: {status?.guesses.length}</Text>
-    </Stack>
-  );  
+  const ScoringPanel = () => {
+    if (!status) {
+      return null;
+    }
+    return (    
+      <Stack
+        position="absolute"
+        top={60}
+        right={0}
+        width={scoringPanelWidth}
+        padding={5}
+        height="auto"
+        backgroundColor="$green4Light"
+        zIndex={0}
+      >
+        <XStack justifyContent="space-between">
+          <Stack flex={1} />
+          <Text fontSize={12} flex={1}>GUESSES: {(status?.guesses.length || 1) - 1}</Text>
+          { status?.state == GameState.Solved && (
+            <Button size="$1" icon={Share} theme="light"/>
+          )}
+        </XStack>
+        { renderGuessRows(10, scoringPanelWidth, hideLetters, showRows, orderByKey) }
+      </Stack>
+    );
+  }
 
   return (
     <Theme name="light">
-    <YStack f={1} bg="$background">
+    <YStack ref={gameComponentRef} flex={1} backgroundColor="$green4Light">
       {/* TitleBar at the top */}
-      <Stack position="absolute" top={0} left={0} right={0} bg="$background" zIndex={1}>
+      <Stack position="absolute" top={0} left={0} right={0} backgroundColor="$background" zIndex={2}>
         {status && <TitleBar clueWord={status.clueWord} onInfoPress={handleInfoPress} />}
       </Stack>
 
@@ -307,13 +360,14 @@ export function GameComponent() {
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: 'flex-end',
-          paddingBottom: 240,
+          paddingBottom: bottomPanelHeight,
         }}
-        zIndex={0}
+        zIndex={1}
         width="100%"
-        backgroundColor="$green4Light"
       >
-        {renderGuessRows()}
+        {
+          renderGuessRows(squareWidth, gameComponentWidth, showLetters, hideRows, orderByPosition)
+        }
       </ScrollView>
 
       {/* NextGuess and Keyboard at the bottom */}
@@ -322,10 +376,9 @@ export function GameComponent() {
         bottom={0}
         left={0}
         right={0}
-        height={240}
-        bg="$background"
+        height={bottomPanelHeight}
         backgroundColor="$gray4Light"
-        zIndex={1}
+        zIndex={2}
       >
         {status && (
           <>
@@ -337,6 +390,8 @@ export function GameComponent() {
                 isEditable={true}
                 editableIndex={editableIndex}
                 onSquareSelect={handleSquareSelected}
+                parentWidth={gameComponentWidth}
+                showLetters={true}
                 squareDim={squareWidth}
               />
               {renderError()}

@@ -1,7 +1,4 @@
-import { useState } from 'react'
-import { useWindowDimensions } from 'react-native'
-import { XStack, Stack } from 'tamagui'
-import { useSpring } from '@tamagui/animations-react-native';
+import { Stack } from 'tamagui'
 import Square from './square'
 import { Guess, Clue } from '../../types'
 
@@ -11,6 +8,8 @@ interface GuessRowProps {
   isSolved: boolean
   isEditable: boolean
   editableIndex?: number
+  parentWidth: number
+  showLetters: boolean
   squareDim: number
   onRowPress?: () => void
   onSquareSelect?: (index: number) => void
@@ -22,12 +21,13 @@ const GuessRow: React.FC<GuessRowProps> = ({
   isSolved,
   isEditable,
   editableIndex = null,
+  parentWidth,
   squareDim,
+  showLetters,
   onRowPress = null,
   onSquareSelect = null,
 }) => {
-  const { width: screenWidth } = useWindowDimensions()
-  const leftPad = screenWidth / 2 - (guess.offset - 0.5) * squareDim
+  const leftPad = parentWidth / 2 - (guess.offset - 0.5) * squareDim
 
   const handleSquarePress = (index: number) => {
     if (onSquareSelect != null) {
@@ -44,12 +44,13 @@ const GuessRow: React.FC<GuessRowProps> = ({
         ...style,
       }}
       animation="medium"
+      backgroundColor="$green4Light"
       onPress={onRowPress || undefined}
     >
       {guess.characters.map((clue: Clue, index: number) => (
         <Square
-          key={'square' + index}
-          letter={clue.letter}
+          key={'square' + index + '_' + guess.key}
+          letter={showLetters ? clue.letter : ''}
           clueType={clue.clueType}
           dimension={squareDim}
           isAnagram={isSolved && index === guess.offset - 1}

@@ -1,8 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
+import { Status, ClueType, Clue, Guess, GuessState, emptyGuess } from '../../types'
 
-import { Status, ClueType, Clue, Guess, GuessState } from '../../types'
-
-const API_BASE_URL = 'https://subsets.ngrok.app/api';
+const API_BASE_URL = (process.env.NODE_ENV === 'development') ? 
+  'http://localhost:8080/api' : 'https://subsets.ngrok.app/api';
 
 export const fetchStatus = async (): Promise<Status> => {
   var data: Status
@@ -23,8 +22,9 @@ export const fetchStatus = async (): Promise<Status> => {
     throw error
   }
 
-  var nextGuess = data.nextGuess
+  var nextGuess: Guess = data.nextGuess
     ? {
+        key: data.nextGuess.key,
         characters: data.nextGuess.characters.map(
           (clue: any): Clue => ({
             letter: clue.letter || '',
@@ -39,18 +39,13 @@ export const fetchStatus = async (): Promise<Status> => {
         state: GuessState.Unsolved,
         offset: data.nextGuess.offset,
       }
-    : {
-        characters: [],
-        length: 0,
-        wordIndex: 0,
-        state: GuessState.Solved,
-        offset: 0,
-      }
+    : emptyGuess
 
   return {
     clueWord: data.clueWord || '',
     guesses: data.guesses.map(
       (guess: any): Guess => ({
+        key: guess.key,
         characters: guess.characters.map(
           (clue: any): Clue => ({
             letter: clue.letter || '',

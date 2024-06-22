@@ -1,6 +1,16 @@
-import { YStack, XStack, Stack, Button, Text, ListItem, ScrollView } from 'tamagui';
-import { ChevronRight, XCircle } from '@tamagui/lucide-icons';
-import Image from 'next/image';
+import { forwardRef } from 'react';
+import { YStack, XStack, Stack, Button, Image, Text, ListItem, ListItemFrame, ListItemTitle, ScrollView, TamaguiElement, styled, themeable, useListItem } from 'tamagui';
+import { Bold, ChevronRight, XCircle } from '@tamagui/lucide-icons';
+
+const DefaultText = styled(Text, {
+    fontSize: 12,
+    textAlign: "left"
+  })
+
+const DefaultListItem = styled(ListItem, {
+    backgroundColor: 'none',
+    marginTop: 5,
+})
 
 const Drawer = ({ visible, onClose }) => {
   if (!visible) return null;
@@ -31,32 +41,51 @@ const Drawer = ({ visible, onClose }) => {
         padding={16}
       >
         <XStack justifyContent="flex-end">
-          <Text fontSize={24} fontWeight="bold" flex={5}>How To Play Subsets</Text>
+          <Text fontSize={18} fontWeight="bold" flex={5}>How To Play Subsets</Text>
           <Button size="$2" icon={XCircle} theme="light" onPress={onClose} flex={1} />
         </XStack>
         <ScrollView>
             <YStack padding={16}>
-                <Text marginTop={8}>A Subset is a word only using letters from another longer word.</Text>
-                <Text marginTop={8}>Guess the 5 Subsets of the starting word.</Text>
-                <Text marginTop={8}>Then use the clue to guess a Subset that crosscuts all 6 words.</Text>
-            <YStack marginVertical={16}>
-                <ListItem icon={ChevronRight}>
-                <Text>Each guess must be a subset of the letters in the previous word.</Text>
-                </ListItem>
-                <ListItem icon={ChevronRight}>
-                <Text>A guess must be a valid word of at least 3 letters.</Text>
-                </ListItem>
-                <ListItem icon={ChevronRight}>
-                <Text>The color of the tile shows how close your guess was to the correct answer.</Text>
-                </ListItem>
-            </YStack>
-            <Image src="/example.png" alt="Example" width={266} height={61} />
-            <Text><Text fontWeight="bold">S</Text> is not in the word in any spot.</Text>
-            <Text><Text fontWeight="bold">E</Text> is in the word and in the correct spot.</Text>
-            <Text><Text fontWeight="bold">A</Text> is in the word but in the wrong spot.</Text>
-            <Text>The other spaces weren't used, and so don't provide any information.</Text>
-            <Text padding={16}>Once you have all 6 words, solve the puzzle by finding the Subset in the
-                highlighted letters that matches the Crosscut Clue at the top of the screen.</Text>
+                <DefaultText fontStyle="italic" backgroundColor="$blue4Light" padding={4}>
+                    <DefaultText fontWeight="bold">Subset:</DefaultText> a word using only letters from another longer word.
+                </DefaultText>
+
+                <DefaultText marginTop={8}>Guess the 5 Subsets of the starting word.</DefaultText>
+                <YStack marginTop={8}>
+                    <DefaultListItem icon={ChevronRight} size="$1">
+                        <DefaultText flex={1}>Each guess must be a subset of the previous word.</DefaultText>
+                    </DefaultListItem>
+                    <DefaultListItem icon={ChevronRight} size="$1">
+                        <DefaultText flex={1}>
+                            A guess must be a valid word of at least 3 letters.
+                        </DefaultText>
+                    </DefaultListItem>
+                    <DefaultListItem icon={ChevronRight} size="$1">
+                        <DefaultText flex={1}>
+                            The correct guess will fill all the spaces.
+                            But you can use shorter guesses to gather clues.
+                        </DefaultText>
+                    </DefaultListItem>
+                    <DefaultListItem icon={ChevronRight} size="$1">
+                        <DefaultText flex={1}>The color of the tile shows how close your guess was to the correct answer.</DefaultText>
+                    </DefaultListItem>
+                </YStack>
+
+                <YStack alignItems="center" width="100%">
+                  <Image src="/example.png" alt="Example" width={177} height={40} marginTop={16}/>
+                </YStack>
+                <DefaultText><DefaultText fontWeight="bold">S</DefaultText> is not in the word in any spot.</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">E</DefaultText> is in the word and in the correct spot.</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">A</DefaultText> is in the word but in the wrong spot.</DefaultText>
+                <DefaultText marginTop={8}>The other spaces weren't used, and so don't provide any information.</DefaultText>
+
+                <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginTop={16}>SOLUTION</DefaultText>
+                <DefaultText marginTop={8}>Once you have all 6 words, solve the puzzle by finding the Subset in the
+                    highlighted letters that matches the Crosscut Clue at the top of the screen.
+                    In the example below, you might guess "INSIDE":</DefaultText>
+                <YStack alignItems="center" width="100%">
+                  <Image src="/anagram.png" alt="Example" width={249} height={217} marginTop={8}/>
+                </YStack>
             </YStack>
         </ScrollView>
       </YStack>

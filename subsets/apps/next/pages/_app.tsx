@@ -37,10 +37,10 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useRootTheme()
 
   return (
-    <NextThemeProvider>
-      { /* change default theme (system) here: */ }
+    <NextThemeProvider
+      /* change default theme (system) here: */
       defaultTheme="light"
-      onChangeTheme={(next) => {
+      onChangeTheme={(next: any) => {
         setTheme(next as any)
       }}
     >

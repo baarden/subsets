@@ -41,3 +41,12 @@ export interface Status {
   state: GameState;   // Current state of the game (solved/unsolved)
   indent: number;
 }
+
+export const emptyGuess: Guess = {
+  key: 0,
+  characters: [],
+  offset: 0,
+  length: 0,
+  wordIndex: 0,
+  state: GuessState.Unsolved,
+}
