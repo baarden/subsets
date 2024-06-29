@@ -1,25 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dimensions, Platform } from 'react-native';
 
 export type Dimension = {
-    width: number;
-    height: number;
-  };
+  width: number;
+  height: number;
+};
 
 export const useResponsiveDimensions = (): Dimension => {
-  const [dimensions, setDimensions] = useState<Dimension>((): Dimension => {
-    if (Platform.OS === 'web') {
-      return {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      };
-    } else {
-      return Dimensions.get('window');
-    }
+  const [dimensions, setDimensions] = useState<Dimension>({
+    width: Platform.OS === 'web' ? 1024 : Dimensions.get('window').width,
+    height: Platform.OS === 'web' ? 768 : Dimensions.get('window').height,
   });
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const handleResize = () => {
         setDimensions({
           width: window.innerWidth,
@@ -29,13 +23,13 @@ export const useResponsiveDimensions = (): Dimension => {
 
       window.addEventListener('resize', handleResize);
       return () => window.removeEventListener('resize', handleResize);
-    } else {
+    } else if (Platform.OS !== 'web') {
       const handleChange = ({ window }) => {
         setDimensions(window);
       };
 
       const subscription = Dimensions.addEventListener('change', handleChange);
-      return () => subscription.remove();
+      return () => subscription?.remove();
     }
   }, []);
 
