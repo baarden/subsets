@@ -21,6 +21,8 @@ export const useResponsiveDimensions = (): Dimension => {
         });
       };
 
+      handleResize();
+
       window.addEventListener('resize', handleResize);
       return () => window.removeEventListener('resize', handleResize);
     } else if (Platform.OS !== 'web') {
