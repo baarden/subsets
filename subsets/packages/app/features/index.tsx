@@ -1,38 +1,47 @@
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { ScrollView as RNScrollVIew } from 'react-native'
 import { XStack, YStack, Text, ScrollView, Stack, Theme, Button } from 'tamagui'
 import { Share } from '@tamagui/lucide-icons'
-import {} from '@my/ui/src/'
 import TitleBar from './titlebar'
 import GuessRow from './guessrow'
 import Keyboard, { KeyboardHandles } from './keyboard'
 import Drawer from './drawer'
 import { fetchStatus, submitGuess } from '../api'
-import { GuessState, Status, Guess, GameState, emptyGuess, ClueType } from '../../types'
+import { Dimension, useResponsiveDimensions } from '../hooks/useResponsiveDimensions'
+import { GuessState, Status, Guess, GameState, emptyGuess, ClueType } from '../types/'
 
-const squareWidth: number = 22
+const squareWidth: number = 45
 const anagramGuess: number = 7
+const titleBarHeight: number = 70
 const bottomPanelHeight: number = 160
 const scoringPanelWidth: number = 140
 const backspace = '\u232B'
 const shuffle = '\uD83D\uDD00'
 
 export function GameComponent() {
-  const [currentGuess, setCurrentGuess] = useState<Guess>(emptyGuess)
-  const [status, setStatus] = useState<Status | null>(null)
-  const [error, setError] = useState<string>('')
-  const [visibleWordIndices, setVisibleWordIndices] = useState<Set<number>>(new Set<number>())
-  const [editableIndex, setEditableIndex] = useState(0)
-  const [keyboardLayout, setKeyboardLayout] = useState<string[][]>([[]])
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [gameComponentWidth, setGameComponentWidth] = useState(0);
+  const screenDim: Dimension = useResponsiveDimensions();
+
+  // Global context
+  const [status, setStatus] = useState<Status | null>(null)
+
+  // History context
+  const [visibleWordIndices, setVisibleWordIndices] = useState<Set<number>>(new Set<number>())
+  const [editableIndex, setEditableIndex] = useState<number>(0)
+
+  // Guess context
+  const [keyboardLayout, setKeyboardLayout] = useState<string[][]>([[]])
+  const [currentGuess, setCurrentGuess] = useState<Guess>(emptyGuess)
+  const [error, setError] = useState<string>('')
 
   const keyboardRef = useRef<KeyboardHandles>(null);  
-  const gameComponentRef = useRef<HTMLDivElement>(null);
+  const scrollViewRef = useRef<RNScrollVIew>(null);
   const showLetters = true, hideLetters = false;
   const showRows = true, hideRows = false;
   const orderByKey = true, orderByPosition = false;
+  const editable = true, notEditable = false;
 
-  const handleSquareSelected = (index) => {
+  const handleSquareSelected = (index: number) => {
     setEditableIndex(index)
   }
 
@@ -50,11 +59,11 @@ export function GameComponent() {
       .catch((err) => setError('Failed to fetch game status'))
   }, [])
 
-  useLayoutEffect(() => {
-    if (gameComponentRef.current) {
-      setGameComponentWidth(gameComponentRef.current.offsetWidth);
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollToEnd({ animated: true });
     }
-  }, []);
+  }, [status]);
 
   const updateStatus = (statusData: Status) => {
     if (!statusData) {
@@ -69,6 +78,7 @@ export function GameComponent() {
     setCurrentGuess(nextGuess)
     var prevGuess = statusData.guesses.slice(-1)[0]
     if (nextGuess.wordIndex == 7 && prevGuess.length < 7) {
+      setVisibleWordIndices(new Set<number>());
       setError('Find a channel anagram matching the clue!')
       setTimeout(() => setError(''), 3000)
     } else if (statusData.state == GameState.Solved) {
@@ -217,10 +227,10 @@ export function GameComponent() {
       <Stack
         alignSelf="center"
         position="absolute"
-        top={ status?.state == GameState.Solved ? 0 : -1 * squareWidth - 5}
+        bottom={ ( status?.state == GameState.Solved) ? -30 : 45}
         backgroundColor={'black'}
         padding="$2"
-        zIndex={2}
+        zIndex={100}
         alignItems="center"
       >
         <Text color="white" fontSize="$1">
@@ -246,18 +256,24 @@ export function GameComponent() {
     shouldInsertSpacer: boolean,
     squareDim: number,
     parentWidth: number,
-    showLetters: boolean
+    showLetters: boolean,
+    keyPrefix: string,
+    isEditable: boolean,
+    editableIndex: number | undefined = undefined
   ) => (
     <>
       <GuessRow
-        key={'guessrow_' + guess.key}
+        key={'guessrow_' + guess.key + '_' + keyPrefix}
         style={{ display: 'flex' }}
         guess={guess}
         onRowPress={() => toggleVisibility(guess.wordIndex)}
-        isSolved={ guess.state === GuessState.Solved }
-        isEditable={false}
+        isAnagramGuess={ status?.state == GameState.Solved || (status?.nextGuess.wordIndex === anagramGuess && guess.wordIndex < anagramGuess) }
+        isEditable={isEditable}
+        editableIndex={editableIndex}
+        onSquareSelect={isEditable ? handleSquareSelected : undefined}
         parentWidth={parentWidth}
         showLetters={showLetters}
+        keyPrefix={keyPrefix}
         squareDim={squareDim}
       />
       {shouldInsertSpacer && renderSpacer()}
@@ -269,7 +285,8 @@ export function GameComponent() {
     parentWidth: number, 
     showLetters: boolean, 
     showRows: boolean,
-    orderByKey: boolean
+    orderByKey: boolean,
+    keyPrefix: string
   ) => {
     if (!status) {
       return null;
@@ -280,7 +297,7 @@ export function GameComponent() {
     }
     
     return (
-      <YStack>
+      <YStack marginTop={10}>
         {guesses.map((guess, _) => {
           const isVisible =
             showRows ||
@@ -297,13 +314,24 @@ export function GameComponent() {
             && guess.wordIndex === anagramGuess - 1
             && showLetters
   
-          return renderGuessRow(guess, shouldInsertSpacer, squareDim, parentWidth, showLetters);
+          return renderGuessRow(guess, shouldInsertSpacer, squareDim, parentWidth, showLetters, keyPrefix, notEditable);
         })}
+        {renderGuessRow(
+          currentGuess,
+          false,
+          squareWidth,
+          screenDim.width,
+          showLetters,
+          "main",
+          editable,
+          editableIndex)}
+        { renderError() }
       </YStack>
     );
   }
 
   const toggleVisibility = (wordIndex: number) => {
+    if (status?.nextGuess.wordIndex == 7) { return }
     setVisibleWordIndices((prevIndices) => {
       const newIndices = new Set(prevIndices)
       if (newIndices.has(wordIndex)) {
@@ -337,36 +365,44 @@ export function GameComponent() {
             <Button size="$1" icon={Share} theme="light"/>
           )}
         </XStack>
-        { renderGuessRows(10, scoringPanelWidth, hideLetters, showRows, orderByKey) }
+        { renderGuessRows(10, scoringPanelWidth, hideLetters, showRows, orderByKey, "score") }
       </Stack>
     );
   }
 
   return (
     <Theme name="light">
-    <YStack ref={gameComponentRef} flex={1} backgroundColor="$green4Light">
+    <YStack flex={1} backgroundColor="$green4Light">
       {/* TitleBar at the top */}
-      <Stack position="absolute" top={0} left={0} right={0} backgroundColor="$background" zIndex={2}>
+      <Stack
+        position="absolute"
+        top={0}
+        left={0}
+        right={0}
+        height={titleBarHeight}
+        backgroundColor="$background"
+        zIndex={2}
+      >
         {status && <TitleBar clueWord={status.clueWord} onInfoPress={handleInfoPress} />}
       </Stack>
 
       <Drawer visible={drawerVisible} onClose={handleDrawerClose} />
 
-      <ScoringPanel />
-
       {/* GuessRows in the middle and scrollable */}
       <ScrollView
-        flex={1}
+        ref={scrollViewRef}      
+        position="absolute"
+        top={titleBarHeight}
+        height={screenDim.height - titleBarHeight - bottomPanelHeight}
+        width="100%"
         contentContainerStyle={{
           flexGrow: 1,
-          justifyContent: 'flex-end',
-          paddingBottom: bottomPanelHeight,
+          justifyContent: 'flex-start'
         }}
         zIndex={1}
-        width="100%"
       >
         {
-          renderGuessRows(squareWidth, gameComponentWidth, showLetters, hideRows, orderByPosition)
+          renderGuessRows(squareWidth, screenDim.width, showLetters, hideRows, orderByPosition, "main")
         }
       </ScrollView>
 
@@ -379,28 +415,16 @@ export function GameComponent() {
         height={bottomPanelHeight}
         backgroundColor="$gray4Light"
         zIndex={2}
+        borderTopColor="$gray7Light"
+        borderTopWidth={1}
       >
         {status && (
           <>
-            <YStack flexGrow={1}>
-              <GuessRow
-                guess={currentGuess}
-                style={{ display: 'flex' }}
-                isSolved={status.state == GameState.Solved}
-                isEditable={true}
-                editableIndex={editableIndex}
-                onSquareSelect={handleSquareSelected}
-                parentWidth={gameComponentWidth}
-                showLetters={true}
-                squareDim={squareWidth}
-              />
-              {renderError()}
               <Keyboard 
                 ref={keyboardRef}              
                 layout={keyboardLayout}
                 onKeyPress={handleKeyPress}
               />
-            </YStack>
           </>
         )}
       </YStack>

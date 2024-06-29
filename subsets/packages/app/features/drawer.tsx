@@ -1,6 +1,5 @@
-import { forwardRef } from 'react';
-import { YStack, XStack, Stack, Button, Image, Text, ListItem, ListItemFrame, ListItemTitle, ScrollView, TamaguiElement, styled, themeable, useListItem } from 'tamagui';
-import { Bold, ChevronRight, XCircle } from '@tamagui/lucide-icons';
+import { YStack, XStack, Stack, Button, Image, Text, ListItem, ScrollView, styled } from 'tamagui';
+import { ChevronRight, XCircle } from '@tamagui/lucide-icons';
 
 const DefaultText = styled(Text, {
     fontSize: 12,
@@ -8,7 +7,7 @@ const DefaultText = styled(Text, {
   })
 
 const DefaultListItem = styled(ListItem, {
-    backgroundColor: 'none',
+    backgroundColor: 'unset',
     marginTop: 5,
 })
 

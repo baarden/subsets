@@ -1,5 +1,5 @@
 import { HomeScreen } from 'app/features/home/screen'
-import { GameComponent } from 'app/features/game/game'
+import { GameComponent } from 'app/features/game'
 import { Stack } from 'expo-router'
 
 export default function Screen() {

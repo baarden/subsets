@@ -1,5 +1,5 @@
 'use client'
 
-import { GameComponent } from 'app/features/game/game'
+import { GameComponent } from 'app/features'
 
 export default GameComponent

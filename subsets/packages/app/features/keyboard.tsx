@@ -17,7 +17,7 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
 
   useEffect(() => {
     const newKeyStates = layout.flatMap((row, rowIndex) =>
-      row.map((key, columnIndex) => `${key}_${rowIndex}_${columnIndex}`)
+      row.map((key, columnIndex) => `key${key}_${rowIndex}_${columnIndex}`)
     ).reduce((acc, keyIdentifier) => ({
       ...acc,
       [keyIdentifier]: true
@@ -29,13 +29,15 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
   const handleKeyPress = (keyIdentifier: string, label: string) => {
     if (keyStates[keyIdentifier]) {
       onKeyPress(label);
-      if (keyIdentifier.startsWith(backspace) || keyIdentifier.startsWith('ENTER')) { return }
+      if (keyIdentifier.startsWith(`key${backspace}`) 
+        || keyIdentifier.startsWith('keyENTER')) 
+      { return }
       setKeyStates(prev => ({ ...prev, [keyIdentifier]: false }));
     }
   };
 
   const enableKey = (keyLabel: string) => {
-    const keyToEnable = Object.entries(keyStates).find(([key, enabled]) => key.startsWith(keyLabel + '_') && !enabled);
+    const keyToEnable = Object.entries(keyStates).find(([key, enabled]) => key.startsWith('key' + keyLabel + '_') && !enabled);
     if (keyToEnable) {
       const [keyIdentifier,] = keyToEnable;
       setKeyStates(prev => ({ ...prev, [keyIdentifier]: true }));
@@ -49,15 +51,15 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
   return (
     <YStack alignItems="center" gap={5} style={{ marginTop: 8 }}>
       {layout.map((row, rowIndex) => (
-        <XStack key={rowIndex} gap={5}>
+        <XStack key={"keyrow" + rowIndex} gap={5}>
           {row.map((letter, columnIndex) => {
-            const keyIdentifier = `${letter}_${rowIndex}_${columnIndex}`;
+            const keyIdentifier = `key${letter}_${rowIndex}_${columnIndex}`;
             return (
               <Button
                 key={keyIdentifier}
                 onPress={() => handleKeyPress(keyIdentifier, letter)}
                 style={{
-                  width: rowIndex == 1 ? 50 : 31,
+                  width: rowIndex == 1 ? 75 : 40,
                   height: 55,
                   padding: 0,
                   marginHorizontal: 0.5,

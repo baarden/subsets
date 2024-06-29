@@ -1,4 +1,4 @@
-import { Status, ClueType, Clue, Guess, GuessState, emptyGuess } from '../../types'
+import { Status, ClueType, Clue, Guess, GuessState, emptyGuess } from '../types'
 
 const API_BASE_URL = (process.env.NODE_ENV === 'development') ? 
   'http://localhost:8080/api' : 'https://subsets.ngrok.app/api';

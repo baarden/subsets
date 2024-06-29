@@ -9,16 +9,24 @@ interface TitleBarProps {
 
 const TitleBar: React.FC<TitleBarProps> = ({ clueWord, onInfoPress }) => {
     return (
-        <XStack justifyContent="space-between" alignItems="center" padding={5} backgroundColor="#f0f0f0">
-            <Stack flex={1}>
-                <Image src="/logotype.png" alt="Subsets logo" width={66} height={41}/>
+        <XStack
+            height={70}
+            justifyContent="space-between"
+            alignItems="center"
+            padding={5}
+            backgroundColor="#f0f0f0"
+            borderBottomColor="$gray7Light"
+            borderBottomWidth={1}
+        >
+            <Stack position="absolute" left={5}>
+                <Image src="/logotype.png" alt="Subsets logo" width={66} height={41} zIndex={5} />
             </Stack>
             <YStack
                 alignItems="center"
                 justifyContent="center"
                 padding={5}
                 backgroundColor="#f0f0f0"
-                flex={10}
+                flex={1}
             >
                 <Text color='black' fontSize={12} textAlign="center">
                     CROSSCUT CLUE
@@ -28,7 +36,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ clueWord, onInfoPress }) => {
                 </Text>
 
             </YStack>
-            <Button icon={Info} theme="light" onPress={onInfoPress} />
+            <Button icon={Info} theme="light" onPress={onInfoPress} position="absolute" right={0} />
         </XStack>
     );
 };

@@ -1,16 +1,17 @@
 import { Stack } from 'tamagui'
 import Square from './square'
-import { Guess, Clue } from '../../types'
+import { Guess, Clue } from '../types/'
 
 interface GuessRowProps {
   guess: Guess
   style?: any
-  isSolved: boolean
+  isAnagramGuess: boolean
   isEditable: boolean
   editableIndex?: number
   parentWidth: number
   showLetters: boolean
   squareDim: number
+  keyPrefix: string
   onRowPress?: () => void
   onSquareSelect?: (index: number) => void
 }
@@ -18,16 +19,18 @@ interface GuessRowProps {
 const GuessRow: React.FC<GuessRowProps> = ({
   guess,
   style,
-  isSolved,
+  isAnagramGuess,
   isEditable,
   editableIndex = null,
   parentWidth,
   squareDim,
   showLetters,
+  keyPrefix,
   onRowPress = null,
   onSquareSelect = null,
 }) => {
-  const leftPad = parentWidth / 2 - (guess.offset - 0.5) * squareDim
+  const offset = isAnagramGuess ? guess.offset : guess.length;
+  const leftPad = parentWidth / 2 - offset * squareDim / 2;
 
   const handleSquarePress = (index: number) => {
     if (onSquareSelect != null) {
@@ -49,11 +52,12 @@ const GuessRow: React.FC<GuessRowProps> = ({
     >
       {guess.characters.map((clue: Clue, index: number) => (
         <Square
-          key={'square' + index + '_' + guess.key}
+          key={keyPrefix + '_square' + index + '_' + guess.key}
           letter={showLetters ? clue.letter : ''}
           clueType={clue.clueType}
           dimension={squareDim}
-          isAnagram={isSolved && index === guess.offset - 1}
+          isAnagramGuess={isAnagramGuess}
+          isAnagramLetter={isAnagramGuess && index === guess.offset - 1}
           isEditable={isEditable && index === editableIndex}
           onPress={() => handleSquarePress(index)}
         />
