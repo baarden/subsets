@@ -13,7 +13,7 @@ import { GuessState, Status, Guess, GameState, emptyGuess, ClueType } from '../t
 const squareWidth: number = 45
 const anagramGuess: number = 7
 const titleBarHeight: number = 70
-const bottomPanelHeight: number = 160
+const bottomPanelHeight: number = 140
 const scoringPanelWidth: number = 140
 const backspace = '\u232B'
 const shuffle = '\uD83D\uDD00'
@@ -79,7 +79,7 @@ export function GameComponent() {
     var prevGuess = statusData.guesses.slice(-1)[0]
     if (nextGuess.wordIndex == 7 && prevGuess.length < 7) {
       setVisibleWordIndices(new Set<number>());
-      setError('Find a channel anagram matching the clue!')
+      setError('Find a crosscut anagram matching the clue!')
       setTimeout(() => setError(''), 3000)
     } else if (statusData.state == GameState.Solved) {
       setError('Solved!')
@@ -98,7 +98,7 @@ export function GameComponent() {
       if (wordIndex == guess.wordIndex) {
         let badChar = guess.characters.filter(c => c.clueType === ClueType.Incorrect);
         if (badChar.length > 0) {
-          filterLetter = badChar[0].letter;
+          filterLetter = badChar[0].letter.toUpperCase();
         }
       }
       if (wordIndex == anagramGuess) {
@@ -106,9 +106,11 @@ export function GameComponent() {
           firstRow.push(guess.characters[guess.offset - 1].letter.toUpperCase());
         }
       } else if (guess.state == GuessState.Solved) {
-        let letters: string[] = guess.characters
-          .filter(c => c.letter !== filterLetter)
-          .map(c => c.letter.toUpperCase());
+        let letters: string[] = guess.characters.map(c => c.letter.toUpperCase());
+        if (filterLetter) {
+          const indexToRemove = letters.indexOf(filterLetter);
+          letters.splice(indexToRemove, 1);
+        }
         return [letters.sort(), secondRow];
       }
     }
@@ -372,7 +374,7 @@ export function GameComponent() {
 
   return (
     <Theme name="light">
-    <YStack flex={1} backgroundColor="$green4Light">
+    <YStack backgroundColor="$green4Light" height={screenDim.height}>
       {/* TitleBar at the top */}
       <Stack
         position="absolute"
