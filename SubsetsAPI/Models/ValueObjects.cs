@@ -37,3 +37,10 @@ public class Clue
     public char Letter { get; set; }
     public ClueType Type { get; set; }
 }
+
+public class Statistics 
+{
+    public int Played { get; set; }
+    public int Solved { get; set; }
+    public int Streak { get; set; }
+}

@@ -37,6 +37,21 @@ public partial class ApiController : ControllerBase
         }
     }
 
+    [HttpGet("stats")]
+    public ActionResult<Statistics> GetStats()
+    {
+        int? userId = GetUser();
+        if (userId == null) { return Unauthorized("User not found."); }
+
+        Statistics stats;
+        try {
+            stats = _gameService.GetStatistics((int)userId);
+            return Ok(stats);
+        } catch (Exception e) {
+            return BadRequest(e.Message);
+        }
+    }
+
     [HttpPost("guess")]
     public ActionResult PostGuess([FromBody] GuessPayload payload)
     {

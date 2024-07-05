@@ -47,7 +47,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
         ...style,
       }}
       animation="medium"
-      backgroundColor="$green4Light"
+      backgroundColor="$gray3Light"
       onPress={onRowPress || undefined}
     >
       {guess.characters.map((clue: Clue, index: number) => (

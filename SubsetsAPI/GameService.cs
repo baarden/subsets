@@ -44,10 +44,11 @@ public class GameService
 
     public (Status, string?) GetStatus(int userId)
     {
-        var status = new Status();
-        DateTime now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time"));
-        DateOnly today = DateOnly.FromDateTime(now);
-        status.Today = today;
+        DateOnly today = GetDate();
+        var status = new Status
+        {
+            Today = today
+        };
 
         var gameData = new GameDayDataProvider(today, _connectionString);
         status.ClueWord = gameData.ClueWord;
@@ -92,6 +93,68 @@ public class GameService
                          .Max();
 
         return (status, refWord);
+    }
+
+    public Statistics GetStatistics(int userId)
+    {
+        DateOnly today = GetDate();
+
+        using var conn = new NpgsqlConnection(_connectionString);
+        conn.Open();
+
+        string guessQuery = @"
+            with guessdata as (
+                select guessdate, cast(solved as int) solved, 1 played
+                    from guess
+                    where userid = @userId
+                union all
+                select @today, 0, 0
+            ), dates as (
+                select guessdate, max(solved) solved, max(played) played
+                from guessdata
+                group by guessdate
+            ), dateLag as (
+                select *, d.guessDate - lag(d.guessDate, 1) over (order by d.guessdate) dateLag
+                from dates d
+                where d.solved = 1
+            ), streak as (
+                select coalesce((@today - min(guessDate)) + 1, 0) streakLen
+                from dateLag dl
+                where dl.dateLag > 1
+            )
+            select count(*) played, sum(d.solved) solved, s.streakLen streakLen
+            from dates d
+                cross join streak s
+            where d.played = 1
+            group by s.streakLen;
+        ";
+
+        using var cmd = new NpgsqlCommand(guessQuery, conn);
+        cmd.Parameters.AddWithValue("@userId", userId);
+        cmd.Parameters.AddWithValue("@today", today);
+
+        using var reader = cmd.ExecuteReader();
+        if (reader.Read())
+        {
+            int played = (int)reader["played"];
+            int solved = (int)reader["solved"];
+            int streak = (int)reader["streakLen"];
+
+            var stats = new Statistics {
+                Played = played,
+                Solved = solved,
+                Streak = streak
+            };
+            return stats;
+        }
+
+        throw new Exception("Unable to read statistics!");
+    }
+
+    private static DateOnly GetDate()
+    {
+        DateTime now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time"));
+        return DateOnly.FromDateTime(now);
     }
 
     private static void AddStartingGuess(Status status, GameDayDataProvider gameData)

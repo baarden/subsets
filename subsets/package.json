@@ -30,6 +30,7 @@
   "dependencies": {
     "@babel/runtime": "^7.24.6",
     "@manypkg/cli": "^0.21.4",
+    "@react-native-clipboard/clipboard": "^1.14.1",
     "check-dependency-version-consistency": "^4.1.0",
     "eslint": "^9.3.0",
     "node-gyp": "^10.1.0",

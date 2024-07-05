@@ -42,6 +42,12 @@ export interface Status {
   indent: number;
 }
 
+export interface Statistics {
+  played: number,
+  solved: number,
+  streak: number
+}
+
 export const emptyGuess: Guess = {
   key: 0,
   characters: [],

@@ -3,11 +3,11 @@ import { Button, Stack, XStack, YStack, Text, Image } from 'tamagui';
 import { Info } from '@tamagui/lucide-icons'
 
 interface TitleBarProps {
-    clueWord: string;
+    guessCount: number;
     onInfoPress: () => void;
 }
 
-const TitleBar: React.FC<TitleBarProps> = ({ clueWord, onInfoPress }) => {
+const TitleBar: React.FC<TitleBarProps> = ({ guessCount, onInfoPress }) => {
     return (
         <XStack
             height={70}
@@ -29,10 +29,10 @@ const TitleBar: React.FC<TitleBarProps> = ({ clueWord, onInfoPress }) => {
                 flex={1}
             >
                 <Text color='black' fontSize={12} textAlign="center">
-                    CROSSCUT CLUE
+                    GUESSES
                 </Text>
                 <Text color='black' fontSize={18} textAlign="center">
-                    “{clueWord}”
+                    {guessCount}
                 </Text>
 
             </YStack>

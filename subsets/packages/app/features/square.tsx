@@ -2,15 +2,6 @@ import { Stack, Text, createTokens } from 'tamagui'
 import { tokens as baseTokens } from '@tamagui/config/v3'
 import { ClueType } from '../types/'
 
-interface SquareProps {
-  letter?: string
-  clueType?: ClueType
-  dimension: number
-  isAnagramGuess: boolean
-  isAnagramLetter: boolean
-  isEditable?: boolean
-}
-
 const customTokens = createTokens({
   ...baseTokens,
   color: {
@@ -19,7 +10,17 @@ const customTokens = createTokens({
   },
 })
 
-const Square = ({
+interface SquareProps {
+  letter?: string
+  clueType?: ClueType
+  dimension: number
+  isAnagramGuess: boolean
+  isAnagramLetter: boolean
+  isEditable?: boolean,
+  onPress: () => void
+}
+
+const Square: React.FC<SquareProps> = ({
   letter = ' ',
   clueType,
   dimension,
@@ -36,7 +37,7 @@ const Square = ({
   const getBackgroundColor = () => {
     switch (clueType) {
       case ClueType.AllCorrect:
-        return (normalWidth) ? customTokens.color.blue8Light : customTokens.color.gray8Light
+        return (normalWidth) ? customTokens.color.blue7Light : customTokens.color.gray8Light
       case ClueType.CorrectLetter:
         return customTokens.color.orange8Light
       case ClueType.Incorrect:
@@ -51,8 +52,8 @@ const Square = ({
       width={squareWidth}
       height={squareHeight}
       backgroundColor={getBackgroundColor()}
-      borderColor={isEditable ? 'blue' : "$gray10Light"}
-      borderWidth={ 1.5 }
+      borderColor={isEditable ? 'blue' : "$gray8Light"}
+      borderWidth={ isEditable ? 3 : 1.5 }
       borderRadius={5}
       marginVertical={squareMargin}
       marginHorizontal={ normalWidth ? squareMargin : squareMargin / 2 }

@@ -73,18 +73,25 @@ const Drawer = ({ visible, onClose }) => {
                 <YStack alignItems="center" width="100%">
                   <Image src="/example.png" alt="Example" width={177} height={40} marginTop={16}/>
                 </YStack>
-                <DefaultText><DefaultText fontWeight="bold">S</DefaultText> is not in the word in any spot.</DefaultText>
-                <DefaultText><DefaultText fontWeight="bold">E</DefaultText> is in the word and in the correct spot.</DefaultText>
-                <DefaultText><DefaultText fontWeight="bold">A</DefaultText> is in the word but in the wrong spot.</DefaultText>
-                <DefaultText marginTop={8}>The other spaces weren't used, and so don't provide any information.</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">P</DefaultText> is in the word but in the wrong spot.</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">I</DefaultText> is in the word and in the correct spot.</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">E</DefaultText> is not in the word in any spot.</DefaultText>
+                <DefaultText marginTop={8}>The first space isn't used, and so doesn't provide any information.</DefaultText>
 
                 <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginTop={16}>SOLUTION</DefaultText>
                 <DefaultText marginTop={8}>Once you have all 6 words, solve the puzzle by finding the Subset in the
-                    highlighted letters that matches the Crosscut Clue at the top of the screen.
-                    In the example below, you might guess "INSIDE":</DefaultText>
+                    highlighted letters. You'll briefly be shown a clue to the hidden word.
+                    In the example below, if you were shown the clue “destroy”, you might guess "POISON":</DefaultText>
                 <YStack alignItems="center" width="100%">
-                  <Image src="/anagram.png" alt="Example" width={249} height={217} marginTop={8}/>
+                  <Image src="/anagram.png" alt="Example" width={250} height={228} marginTop={8}/>
                 </YStack>
+
+                <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginVertical={16}>SCORING</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">5-10 guesses:</DefaultText> Excellent!</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">11-12 guesses:</DefaultText> Great!</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">13-14 guesses:</DefaultText> Nice!</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">15+ guesses:</DefaultText> Good try!</DefaultText>
+
             </YStack>
         </ScrollView>
       </YStack>

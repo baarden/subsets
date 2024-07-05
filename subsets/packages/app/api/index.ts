@@ -1,4 +1,4 @@
-import { Status, ClueType, Clue, Guess, GuessState, emptyGuess } from '../types'
+import { Status, ClueType, Clue, Guess, GuessState, emptyGuess, Statistics } from '../types/'
 
 const API_BASE_URL = (process.env.NODE_ENV === 'development') ? 
   'http://localhost:8080/api' : 'https://subsets.ngrok.app/api';
@@ -84,5 +84,31 @@ export const submitGuess = async (guess: string): Promise<void> => {
     throw new Error(errorText)
   } else {
     throw new Error(`Error: ${response.status}`)
+  }
+}
+
+export const fetchStats = async () : Promise<Statistics> => {
+  var data: Statistics
+  try {
+    const response = await fetch(`${API_BASE_URL}/stats`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`)
+    }
+    data = await response.json()
+  } catch (error) {
+    console.error('Error fetching statistics:', error)
+    throw error
+  }
+
+  return {
+    played: data.played,
+    solved: data.solved,
+    streak: data.streak
   }
 }
