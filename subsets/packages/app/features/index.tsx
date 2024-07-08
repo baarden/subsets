@@ -139,16 +139,19 @@ export function GameComponent() {
   }
 
   const getKeys = (guesses: Guess[], wordIndex: number, gameState: GameState): string[][] => {
-    const secondRow = ['ENTER', shuffle, backspace];
+    const secondRow = [backspace, shuffle, 'ENTER'];
     if (gameState == GameState.Solved) { return [[]] }
     let firstRow: string[] = []
     let filterLetter : string = "";
+    let goodChars : string[] = [];
     for (let i = guesses.length - 1; i >= 0; i--) {
       const guess : Guess = guesses[i];
-      if (wordIndex == guess.wordIndex) {
+      if (wordIndex == guess.wordIndex && filterLetter == "") {
         let badChar = guess.characters.filter(c => c.clueType === ClueType.Incorrect);
         if (badChar.length > 0) {
           filterLetter = badChar[0].letter.toUpperCase();
+        } else {
+          goodChars = guess.characters.map(c => c.letter.toUpperCase());
         }
       }
       if (wordIndex == anagramGuess) {
@@ -157,6 +160,11 @@ export function GameComponent() {
         }
       } else if (guess.state == GuessState.Solved) {
         let letters: string[] = guess.characters.map(c => c.letter.toUpperCase());
+        if (goodChars.length > 0 && !filterLetter) {
+          const superset = [...letters];
+          goodChars.forEach(i => {superset.splice(superset.indexOf(i), 1)});
+          filterLetter = superset[0];
+        }
         if (filterLetter) {
           const indexToRemove = letters.indexOf(filterLetter);
           letters.splice(indexToRemove, 1);
@@ -183,6 +191,7 @@ export function GameComponent() {
         setError('Incomplete guess')
         setTimeout(() => setError(''), 2000)
       }
+      keyboardRef.current?.enableKey('ENTER')
     } else if (key == shuffle) {
       let keys = [shuffleArray(keyboardLayout[0]), keyboardLayout[1]]
       setKeyboardLayout(keys)

@@ -301,9 +301,7 @@ public class GameService
         string checkGuessQuery = @"
             SELECT COUNT(*)
             FROM Words w
-                LEFT JOIN NonWords nw on nw.NonWord = w.Word
-            WHERE w.Word = @Guess
-                AND nw.Id IS NULL;
+            WHERE w.Word = @Guess;
         ";
 
         using var checkCmd = new NpgsqlCommand(checkGuessQuery, conn);

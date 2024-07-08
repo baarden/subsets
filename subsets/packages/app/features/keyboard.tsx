@@ -1,5 +1,6 @@
 import { useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import { XStack, YStack, Button, Text } from 'tamagui';
+import LottieView from 'lottie-react-native';
 
 interface KeyboardProps {
   layout: string[][];
@@ -29,9 +30,7 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
   const handleKeyPress = (keyIdentifier: string, label: string) => {
     if (keyStates[keyIdentifier]) {
       onKeyPress(label);
-      if (keyIdentifier.startsWith(`key${backspace}`) 
-        || keyIdentifier.startsWith('keyENTER')) 
-      { return }
+      if (keyIdentifier.startsWith(`key${backspace}`)) { return }
       setKeyStates(prev => ({ ...prev, [keyIdentifier]: false }));
     }
   };
@@ -69,9 +68,18 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
                   backgroundColor: keyStates[keyIdentifier] ? '#ddd' : '#ccc',
                 }}
               >
-                <Text color='black' style={{ fontSize: letter === 'ENTER' ? 12 : 16 }}>
-                  {letter}
-                </Text>
+                {keyStates[keyIdentifier] || !keyIdentifier.startsWith("keyENTER") ? (
+                  <Text color='black' style={{ fontSize: letter === 'ENTER' ? 12 : 16 }}>
+                    {letter}
+                  </Text>
+                ) : (
+                  <LottieView
+                    source={require("../assets/loading_dots.json")}
+                    style={{width: "100%", height: "100%"}}
+                    autoPlay
+                    loop
+                  />
+                )}
               </Button>
             );
           })}
