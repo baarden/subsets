@@ -136,9 +136,9 @@ public class GameService
         using var reader = cmd.ExecuteReader();
         if (reader.Read())
         {
-            int played = (int)reader["played"];
-            int solved = (int)reader["solved"];
-            int streak = (int)reader["streakLen"];
+            int played = Convert.ToInt32(reader["played"]);
+            int solved = Convert.ToInt32(reader["solved"]);
+            int streak = Convert.ToInt32(reader["streakLen"]);
 
             var stats = new Statistics {
                 Played = played,

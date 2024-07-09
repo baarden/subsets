@@ -42,9 +42,10 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
     const shareStatus = () => {
         if (!status) { return }
         let share: string[] = [`Subsets in ${status.guesses.length - 1}!`];
-        status.guesses.forEach((value: Guess, index: number) => {
+        const guesses = [...status.guesses].sort((a, b) => a.key - b.key)
+        guesses.forEach((value: Guess, index: number) => {
             let row: string = "";
-            const indent:number = Math.floor(value.wordIndex / 2) - 1;
+            const indent:number = Math.ceil(value.wordIndex / 2) - 1;
             for (let i:number = 0; i < indent; i++) {
                 row += blackSquare;
             }
@@ -61,8 +62,12 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
                         row += whiteSquare;
                 }
             })
+            for (let i:number = indent + value.length; i < 8; i++) {
+                row += blackSquare;
+            }
             share.push(row);
         })
+        share.push("https://subsets.ngrok.app")
         copyToClipboard(share.join("\n"));
     }
 

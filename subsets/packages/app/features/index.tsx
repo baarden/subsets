@@ -88,19 +88,18 @@ export function GameComponent() {
     setGuessCount(guesses - 1)
     if (statusData.state == GameState.Solved) {
       displaySummary(guesses)
+      const feedback = getFeedback(guesses, 7, false)
+      setError(`Solved! ${feedback}`)
+      return
     }
     const prevGuess = statusData.guesses.slice(-1)[0]
-    if (prevGuess.state == GuessState.Solved && nextGuess.wordIndex > 2) {
+    if (prevGuess.state == GuessState.Solved) {
       const penultGuess = statusData.guesses.slice(-2)[0]
       const isGuessInOne = penultGuess.state == GuessState.Solved
       const feedback = getFeedback(guesses, nextGuess.wordIndex, isGuessInOne)
-      if (statusData.state == GameState.Solved) {
-        setError(`Solved! ${feedback}`)
-        return
-      }
       if (nextGuess.wordIndex == 7) {
         setError(`Find a crosscut anagram (clue: “${statusData.clueWord}”)`)
-      } else {
+      } else if (nextGuess.wordIndex > 2) {
         setError(feedback)
       }
       setTimeout(() => setError(''), 3000)
@@ -111,13 +110,11 @@ export function GameComponent() {
   }
 
   const displaySummary = (guesses: number) => {
-
     fetchStats()
       .then((statsData) => {
         setStatistics(statsData)
       })
       .catch((err) => setError('Failed to fetch statistics'))
-    
     setFeedback(getFeedback(guesses, 7, false))
     setSummaryVisible(true)
   }
@@ -132,7 +129,6 @@ export function GameComponent() {
       { min: 13, max: 14, message: "Nice!" },
       { min: 15, max: Infinity, message: "Good try!" },
     ];
-  
     const score = guesses + 6 - wordIndex
     const feedback = ranges.find(range => score >= range.min && score <= range.max);
     return feedback ? feedback.message : "Invalid score";
@@ -151,7 +147,10 @@ export function GameComponent() {
         if (badChar.length > 0) {
           filterLetter = badChar[0].letter.toUpperCase();
         } else {
-          goodChars = guess.characters.map(c => c.letter.toUpperCase());
+          const emptyChars = guess.characters.filter(c => c.clueType === ClueType.Empty);
+          if (emptyChars.length == 0) {
+            goodChars = guess.characters.map(c => c.letter.toUpperCase());
+          }
         }
       }
       if (wordIndex == anagramGuess) {
@@ -175,8 +174,8 @@ export function GameComponent() {
     return [firstRow.reverse(), secondRow];
   }  
 
-  const handleKeyPress = async (key: string) => {
-    if (status === null) return
+  const handleKeyPress = async (key: string): Promise<boolean> => {
+    if (status === null) return false
     if (key === 'ENTER') {
       if (currentGuessLength() >= 3) {
         try {
@@ -190,6 +189,7 @@ export function GameComponent() {
       } else {
         setError('Incomplete guess')
         setTimeout(() => setError(''), 2000)
+        return false
       }
       keyboardRef.current?.enableKey('ENTER')
     } else if (key == shuffle) {
@@ -208,11 +208,11 @@ export function GameComponent() {
       let editIndex = editableIndex
       let deletedChar = currentGuess.characters[editIndex].letter
       if (deletedChar === ' ') {
-        if (editIndex === 0) { return }
+        if (editIndex === 0) { return false }
         editIndex--
         setEditableIndex(editIndex)
         deletedChar = currentGuess.characters[editIndex].letter
-        if (deletedChar === ' ') { return }
+        if (deletedChar === ' ') { return false }
       }
       updateGuessCharacter(editIndex, ' ')
       keyboardRef.current?.enableKey(deletedChar.toUpperCase())
@@ -224,6 +224,7 @@ export function GameComponent() {
       updateGuessCharacter(editableIndex, key)
       setEditableIndex(nextEditableIndex())
     }
+    return true
   }
 
   function shuffleArray(array) {

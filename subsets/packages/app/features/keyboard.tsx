@@ -1,10 +1,10 @@
 import { useEffect, useState, useImperativeHandle, forwardRef } from 'react';
-import { XStack, YStack, Button, Text } from 'tamagui';
+import { Stack, XStack, YStack, Button, Text } from 'tamagui';
 import LottieView from 'lottie-react-native';
 
 interface KeyboardProps {
   layout: string[][];
-  onKeyPress: (key: string) => void; 
+  onKeyPress: (key: string) => Promise<boolean>; 
 }
 
 export interface KeyboardHandles {
@@ -27,16 +27,17 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
     setKeyStates(newKeyStates);
   }, [layout]);
 
-  const handleKeyPress = (keyIdentifier: string, label: string) => {
+  const handleKeyPress = async (keyIdentifier: string, label: string) => {
     if (keyStates[keyIdentifier]) {
-      onKeyPress(label);
-      if (keyIdentifier.startsWith(`key${backspace}`)) { return }
+      const success: boolean = await onKeyPress(label);
+      if (keyIdentifier.startsWith(`key${backspace}`) || !success) { return }
       setKeyStates(prev => ({ ...prev, [keyIdentifier]: false }));
     }
   };
 
   const enableKey = (keyLabel: string) => {
     const keyToEnable = Object.entries(keyStates).find(([key, enabled]) => key.startsWith('key' + keyLabel + '_') && !enabled);
+    console.log(keyStates);
     if (keyToEnable) {
       const [keyIdentifier,] = keyToEnable;
       setKeyStates(prev => ({ ...prev, [keyIdentifier]: true }));
@@ -73,12 +74,13 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
                     {letter}
                   </Text>
                 ) : (
-                  <LottieView
-                    source={require("../assets/loading_dots.json")}
-                    style={{width: "100%", height: "100%"}}
-                    autoPlay
-                    loop
-                  />
+                  <Stack marginTop={3} alignSelf='center'>
+                    <LottieView
+                      source={require("../assets/loading_dots.json")}
+                      autoPlay
+                      loop
+                    />
+                  </Stack>
                 )}
               </Button>
             );
