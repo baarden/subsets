@@ -49,7 +49,14 @@ const Drawer = ({ visible, onClose }) => {
                     <DefaultText fontWeight="bold">Subset:</DefaultText> a word using only letters from another longer word.
                 </DefaultText>
 
-                <DefaultText marginTop={8}>Guess the 5 Subsets of the starting word.</DefaultText>
+                <DefaultText marginTop={8}>
+                  Guess the 5 Subsets of the starting word.
+                  For example, if the starting word is "RESPONDS", the solution might look like this:
+                </DefaultText>
+                <YStack alignItems="center" width="100%">
+                  <Image src="/full_example.png" alt="Full example" width={327} height={244} marginTop={8}/>
+                </YStack>
+
                 <YStack marginTop={8}>
                     <DefaultListItem icon={ChevronRight} size="$1">
                         <DefaultText flex={1}>Each guess must be a subset of the previous word.</DefaultText>
@@ -71,12 +78,12 @@ const Drawer = ({ visible, onClose }) => {
                 </YStack>
 
                 <YStack alignItems="center" width="100%">
-                  <Image src="/example.png" alt="Example" width={177} height={40} marginTop={16}/>
+                  <Image src="/example.png" alt="Example" width={166} height={42} marginTop={16}/>
                 </YStack>
-                <DefaultText><DefaultText fontWeight="bold">P</DefaultText> is in the word but in the wrong spot.</DefaultText>
-                <DefaultText><DefaultText fontWeight="bold">I</DefaultText> is in the word and in the correct spot.</DefaultText>
-                <DefaultText><DefaultText fontWeight="bold">E</DefaultText> is not in the word in any spot.</DefaultText>
-                <DefaultText marginTop={8}>The first space isn't used, and so doesn't provide any information.</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">R</DefaultText> is in the word and in the correct spot.</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">E</DefaultText> is in the word but in the wrong spot.</DefaultText>
+                <DefaultText><DefaultText fontWeight="bold">S</DefaultText> is not in the word in any spot.</DefaultText>
+                <DefaultText marginTop={8}>The last space isn't used, and so doesn't provide any information.</DefaultText>
 
                 <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginTop={16}>SOLUTION</DefaultText>
                 <DefaultText marginTop={8}>Once you have all 6 words, solve the puzzle by finding the Subset in the
