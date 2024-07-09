@@ -27,17 +27,17 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
     setKeyStates(newKeyStates);
   }, [layout]);
 
-  const handleKeyPress = async (keyIdentifier: string, label: string) => {
+  const handleKeyPress = (keyIdentifier: string, label: string) => {
     if (keyStates[keyIdentifier]) {
-      const success: boolean = await onKeyPress(label);
-      if (keyIdentifier.startsWith(`key${backspace}`) || !success) { return }
-      setKeyStates(prev => ({ ...prev, [keyIdentifier]: false }));
+      if (!keyIdentifier.startsWith(`key${backspace}`)) {
+        setKeyStates(prev => ({ ...prev, [keyIdentifier]: false }));
+      }
+      onKeyPress(label);
     }
   };
 
-  const enableKey = (keyLabel: string) => {
+  const enableKey = async (keyLabel: string) => {
     const keyToEnable = Object.entries(keyStates).find(([key, enabled]) => key.startsWith('key' + keyLabel + '_') && !enabled);
-    console.log(keyStates);
     if (keyToEnable) {
       const [keyIdentifier,] = keyToEnable;
       setKeyStates(prev => ({ ...prev, [keyIdentifier]: true }));
