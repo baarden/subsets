@@ -43,6 +43,7 @@ export const fetchStatus = async (): Promise<Status> => {
 
   return {
     clueWord: data.clueWord || '',
+    characters: data.characters,
     guesses: data.guesses.map(
       (guess: any): Guess => ({
         key: guess.key,
@@ -55,6 +56,7 @@ export const fetchStatus = async (): Promise<Status> => {
                 : ClueType.Empty,
           })
         ),
+        guessWord: guess.guessWord,
         length: guess.length,
         wordIndex: guess.wordIndex,
         state: guess.state,

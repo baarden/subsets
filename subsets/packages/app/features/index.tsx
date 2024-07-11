@@ -28,6 +28,7 @@ export function GameComponent() {
   const [status, setStatus] = useState<Status | null>(null)
   const [feedback, setFeedback] = useState<string>("")
   const [statistics, setStatistics] = useState<Statistics | null>(null)
+  const [referenceWord, setReferenceWord] = useState<string>("")
 
   // History context
   const [visibleWordIndices, setVisibleWordIndices] = useState<Set<number>>(new Set<number>())
@@ -80,7 +81,8 @@ export function GameComponent() {
     }
     setStatus(statusData)
     setEditableIndex(0)
-    let keys: string[][] = getKeys(statusData.guesses, statusData.nextGuess.wordIndex, statusData.state)
+
+    let keys: string[][] = getKeys(statusData.guesses, statusData.nextGuess.wordIndex, statusData.state, statusData.characters)
     setKeyboardLayout(keys)
     var nextGuess = statusData.nextGuess
     setCurrentGuess(nextGuess)
@@ -98,7 +100,7 @@ export function GameComponent() {
       const isGuessInOne = penultGuess.state == GuessState.Solved
       const feedback = getFeedback(guesses, nextGuess.wordIndex, isGuessInOne)
       if (nextGuess.wordIndex == 7) {
-        setError(`Find a crosscut anagram (clue: “${statusData.clueWord}”)`)
+        setError("Congrats! Find the crosscut to solve.")
       } else if (nextGuess.wordIndex > 2) {
         setError(feedback)
       }
@@ -107,6 +109,13 @@ export function GameComponent() {
     } else {
       setError('')
     }
+    let refWord = ""
+    statusData.guesses.forEach(guess => {
+      if (guess.state === GuessState.Solved) {
+        refWord = guess.guessWord
+      }
+    })
+    setReferenceWord(refWord)
   }
 
   const displaySummary = (guesses: number) => {
@@ -134,44 +143,12 @@ export function GameComponent() {
     return feedback ? feedback.message : "Invalid score";
   }
 
-  const getKeys = (guesses: Guess[], wordIndex: number, gameState: GameState): string[][] => {
-    const secondRow = [backspace, shuffle, 'ENTER'];
+  const getKeys = (guesses: Guess[], wordIndex: number, gameState: GameState, keyArr: string[]): string[][] => {
     if (gameState == GameState.Solved) { return [[]] }
-    let firstRow: string[] = []
-    let filterLetter : string = "";
-    let goodChars : string[] = [];
-    for (let i = guesses.length - 1; i >= 0; i--) {
-      const guess : Guess = guesses[i];
-      if (wordIndex == guess.wordIndex && filterLetter == "") {
-        let badChar = guess.characters.filter(c => c.clueType === ClueType.Incorrect);
-        if (badChar.length > 0) {
-          filterLetter = badChar[0].letter.toUpperCase();
-        } else {
-          const emptyChars = guess.characters.filter(c => c.clueType === ClueType.Empty);
-          if (emptyChars.length == 0) {
-            goodChars = guess.characters.map(c => c.letter.toUpperCase());
-          }
-        }
-      }
-      if (wordIndex == anagramGuess) {
-        if (guess.state == GuessState.Solved) {
-          firstRow.push(guess.characters[guess.offset - 1].letter.toUpperCase());
-        }
-      } else if (guess.state == GuessState.Solved) {
-        let letters: string[] = guess.characters.map(c => c.letter.toUpperCase());
-        if (goodChars.length > 0 && !filterLetter) {
-          const superset = [...letters];
-          goodChars.forEach(i => {superset.splice(superset.indexOf(i), 1)});
-          filterLetter = superset[0];
-        }
-        if (filterLetter) {
-          const indexToRemove = letters.indexOf(filterLetter);
-          letters.splice(indexToRemove, 1);
-        }
-        return [letters.sort(), secondRow];
-      }
-    }
-    return [firstRow.reverse(), secondRow];
+
+    const secondRow = [backspace, shuffle, 'ENTER'];
+    const firstRow = keyArr.map(c => c.toUpperCase());
+    return [firstRow, secondRow];
   }  
 
   const handleKeyPress = async (key: string): Promise<boolean> => {
@@ -463,7 +440,7 @@ export function GameComponent() {
       </Stack>
 
       <Drawer visible={drawerVisible} onClose={handleDrawerClose} />
-      <SummaryDrawer statistics={statistics} status={status} feedback={feedback} visible={summaryVisible} onClose={handleSummaryClose} />
+      <SummaryDrawer statistics={statistics || undefined} status={status || undefined} feedback={feedback} visible={summaryVisible} onClose={handleSummaryClose} />
 
       {/* GuessRows in the middle and scrollable */}
       <ScrollView
@@ -481,6 +458,11 @@ export function GameComponent() {
       >
         {
           renderGuessRows(squareWidth, screenDim.width, showLetters, hideRows, orderByPosition, "main")
+        }
+        { (status?.state == GameState.Unsolved && status.nextGuess.wordIndex == 7) &&
+          <YStack alignItems='center' width="100%" marginTop={8}>
+            <Text fontWeight='bold' fontSize={12}>CLUE: “{status?.clueWord}”</Text>
+          </YStack>
         }
       </ScrollView>
 
@@ -500,6 +482,7 @@ export function GameComponent() {
                     <Keyboard 
                       ref={keyboardRef}              
                       layout={keyboardLayout}
+                      refWord={referenceWord.toUpperCase()}
                       onKeyPress={handleKeyPress}
                     />
             </YStack>

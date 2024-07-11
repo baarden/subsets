@@ -10,7 +10,7 @@ namespace SubsetsAPI.Controllers;
 public partial class ApiController : ControllerBase
 {
     // RegularExpressions turns the class into a partial
-    [GeneratedRegex(@"^ *[a-zA-Z]{3,7} *$")]
+    [GeneratedRegex(@"^ *[a-zA-Z]{4,8} *$")]
     private static partial Regex GuessRegex();
 
     private readonly GameService _gameService;

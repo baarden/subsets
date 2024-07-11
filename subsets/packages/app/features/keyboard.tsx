@@ -4,7 +4,13 @@ import LottieView from 'lottie-react-native';
 
 interface KeyboardProps {
   layout: string[][];
+  refWord: string;
   onKeyPress: (key: string) => Promise<boolean>; 
+}
+
+interface KeyStatus {
+  active: boolean;
+  highlighted: boolean;
 }
 
 export interface KeyboardHandles {
@@ -13,36 +19,58 @@ export interface KeyboardHandles {
 
 const backspace = '\u232B'
 
-const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPress }, ref) => {
-  const [keyStates, setKeyStates] = useState<{ [keyIdentifier: string]: boolean }>({});
+const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, onKeyPress }, ref) => {
+  const [keyStates, setKeyStates] = useState<{ [keyIdentifier: string]: KeyStatus }>({});
 
   useEffect(() => {
-    const newKeyStates = layout.flatMap((row, rowIndex) =>
-      row.map((key, columnIndex) => `key${key}_${rowIndex}_${columnIndex}`)
-    ).reduce((acc, keyIdentifier) => ({
-      ...acc,
-      [keyIdentifier]: true
-    }), {});
-
-    setKeyStates(newKeyStates);
-  }, [layout]);
+    console.log("layout:", layout);
+    const states: { [key: string]: KeyStatus } =
+      layout.flatMap((row, rowIndex) =>
+        row.map((key, columnIndex) => `key${key}_${rowIndex}_${columnIndex}`)
+      ).reduce((acc, keyIdentifier) => ({
+        ...acc,
+        [keyIdentifier]: { active: true, highlighted: false }
+      }), {});
+    const keys: [string, KeyStatus][] = Object.entries(states);
+    refWord.split('').map((key) => {
+      const entryMatch = keys.find(([k, v]) => k.startsWith(`key${key}_`) && v.highlighted === false)
+      if (entryMatch) {
+        states[entryMatch[0]].highlighted = true
+      }
+    });
+    setKeyStates(states);
+  }, [layout, refWord]);
 
   const handleKeyPress = (keyIdentifier: string, label: string) => {
-    if (keyStates[keyIdentifier]) {
-      if (!keyIdentifier.startsWith(`key${backspace}`)) {
-        setKeyStates(prev => ({ ...prev, [keyIdentifier]: false }));
-      }
-      onKeyPress(label);
+    if (!keyIdentifier.startsWith(`key${backspace}`)) {
+      let states = {...keyStates};
+      states[keyIdentifier].active = false;
+      setKeyStates(states);
     }
+    onKeyPress(label);
   };
 
   const enableKey = async (keyLabel: string) => {
-    const keyToEnable = Object.entries(keyStates).find(([key, enabled]) => key.startsWith('key' + keyLabel + '_') && !enabled);
-    if (keyToEnable) {
-      const [keyIdentifier,] = keyToEnable;
-      setKeyStates(prev => ({ ...prev, [keyIdentifier]: true }));
+    const keyEntries: [string, KeyStatus][] = Object.entries(keyStates)
+    const keyEntry = keyEntries.find(([key, status]) => key.startsWith(`key${keyLabel}_`) && !status.active);
+    if (keyEntry) {
+      const keyIdentifier = keyEntry[0];
+      let states = {...keyStates};
+      states[keyIdentifier].active = true;
+      setKeyStates(states);
     }
   };
+
+  const getKeyColor = (status: KeyStatus | undefined) : string => {
+    if (status === undefined) { return ""; }
+    if (status.active === false) {
+      return "#ccc";
+    }
+    if (refWord.length === 8 || status.highlighted === false) {
+      return "#ddd";
+    }
+    return "#ffb";
+  }
 
   useImperativeHandle(ref, () => ({
     enableKey,
@@ -54,6 +82,7 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
         <XStack key={"keyrow" + rowIndex} gap={5}>
           {row.map((letter, columnIndex) => {
             const keyIdentifier = `key${letter}_${rowIndex}_${columnIndex}`;
+            if (!(keyIdentifier in keyStates)) { return; }
             return (
               <Button
                 key={keyIdentifier}
@@ -66,10 +95,10 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, onKeyPres
                   borderRadius: 4,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  backgroundColor: keyStates[keyIdentifier] ? '#ddd' : '#ccc',
+                  backgroundColor: getKeyColor(keyStates[keyIdentifier]),
                 }}
               >
-                {keyStates[keyIdentifier] || !keyIdentifier.startsWith("keyENTER") ? (
+                {keyStates[keyIdentifier].active || !keyIdentifier.startsWith("keyENTER") ? (
                   <Text color='black' style={{ fontSize: letter === 'ENTER' ? 12 : 16 }}>
                     {letter}
                   </Text>

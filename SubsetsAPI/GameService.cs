@@ -76,6 +76,10 @@ public class GameService
         status.State = (maxWordIndex <= _MaxWordIndex) ? GuessState.Unsolved : GuessState.Solved;
         string? refWord = null;
 
+        List<char> gameChars = (maxWordIndex < _MaxWordIndex) ? gameData.ReferenceWord(6).ToList() : gameData.ReferenceWord(7).ToList();
+        gameChars.Sort();
+        status.Characters = gameChars;
+
         if (status.State == GuessState.Unsolved)
         {
             refWord = gameData.ReferenceWord(maxWordIndex);
@@ -109,6 +113,8 @@ public class GameService
                     where userid = @userId
                 union all
                 select @today, 0, 0
+                union all
+                select '2023-01-01', 0, 1
             ), dates as (
                 select guessdate, max(solved) solved, max(played) played
                 from guessdata
@@ -287,13 +293,6 @@ public class GameService
         var gameData = new GameDayDataProvider(guessDate, _connectionString);
 
         string refWord = (guessWordIndex < _MaxWordIndex) ? gameData.ReferenceWord(guessWordIndex - 1) : gameData.ReferenceWord(_MaxWordIndex);
-        var isSubset = trimGuess.GroupBy(c => c)
-                                .All(g => refWord.Count(b => b == g.Key) >= g.Count());
-        if (!isSubset)
-        {
-            errorMessage = "Not a subset";
-            return false;
-        }
 
         using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
@@ -408,6 +407,9 @@ public class GameDayDataProvider
             string anagram = (string)reader["Anagram"];
             int[] anagramOffsets = (int[])reader["AnagramOffsets"];
             string[] words = (string[])reader["Words"];
+
+            Array.Reverse(words);
+            Array.Reverse(anagramOffsets);
 
             return new GameDayData(ClueWord: clueWord, Anagram: anagram, AnagramOffsets: anagramOffsets, SubsetWords: words);
         }
