@@ -154,7 +154,7 @@ export function GameComponent() {
   const handleKeyPress = async (key: string): Promise<boolean> => {
     if (status === null) return false
     if (key === 'ENTER') {
-      if (currentGuessLength() >= 3) {
+      if (currentGuessLength() >= 4) {
         try {
           await submitGuess(currentGuess.characters.map((clue) => clue.letter).join(''))
           const statusData = await fetchStatus()

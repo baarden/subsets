@@ -45,9 +45,9 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
         const guesses = [...status.guesses].sort((a, b) => a.key - b.key)
         guesses.forEach((value: Guess, index: number) => {
             let row: string = "";
-            const indent:number = Math.ceil(value.wordIndex / 2) - 1;
+            const indent:number = 3 - Math.ceil(value.wordIndex / 2);
             for (let i:number = 0; i < indent; i++) {
-                row += blackSquare;
+                row += whiteSquare;
             }
             value.characters.map((value: Clue, index: number) => {
                 switch (value.clueType) {
@@ -59,11 +59,11 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
                         break;
                     case ClueType.Incorrect:
                     case ClueType.Empty:
-                        row += whiteSquare;
+                        row += blackSquare;
                 }
             })
             for (let i:number = indent + value.length; i < 8; i++) {
-                row += blackSquare;
+                row += whiteSquare;
             }
             share.push(row);
         })

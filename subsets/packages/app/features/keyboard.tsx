@@ -23,7 +23,6 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
   const [keyStates, setKeyStates] = useState<{ [keyIdentifier: string]: KeyStatus }>({});
 
   useEffect(() => {
-    console.log("layout:", layout);
     const states: { [key: string]: KeyStatus } =
       layout.flatMap((row, rowIndex) =>
         row.map((key, columnIndex) => `key${key}_${rowIndex}_${columnIndex}`)
@@ -42,6 +41,7 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
   }, [layout, refWord]);
 
   const handleKeyPress = (keyIdentifier: string, label: string) => {
+    if (keyStates[keyIdentifier].active === false) { return; }
     if (!keyIdentifier.startsWith(`key${backspace}`)) {
       let states = {...keyStates};
       states[keyIdentifier].active = false;
