@@ -100,7 +100,7 @@ export function GameComponent() {
       const isGuessInOne = penultGuess.state == GuessState.Solved
       const feedback = getFeedback(guesses, nextGuess.wordIndex, isGuessInOne)
       if (nextGuess.wordIndex == 7) {
-        setError("Congrats! Find the crosscut to solve.")
+        setError("Congrats! Find the hidden word to solve.")
       } else if (nextGuess.wordIndex > 2) {
         setError(feedback)
       }
@@ -154,14 +154,21 @@ export function GameComponent() {
       if (guess.wordIndex !== wordIndex) { return; }
       const chars = guess.characters;
       const badChars = chars.filter(c => c.clueType == ClueType.Incorrect).map(c => c.letter.toUpperCase());
-      if (badChars.length > 0) {
-        firstRow = firstRow.filter(c => !badChars.includes(c));
-      }
+      badChars.forEach(c => {
+        const badIdx = firstRow.indexOf(c);
+        firstRow.splice(badIdx, 1);
+      });
 
       const goodChars = chars.filter(c => goodTypes.includes(c.clueType)).map(c => c.letter.toUpperCase());
       if (goodChars.length === wordIndex + 2) {
-        const badChars = firstRow.filter(c => !goodChars.includes(c));
-        firstRow = firstRow.filter(c => !badChars.includes(c));
+        for (let i = firstRow.length - 1; i >= 0; i--) {
+          const goodIdx = goodChars.indexOf(firstRow[i]);
+          if (goodIdx === -1) {
+            firstRow.splice(i, 1);
+          } else {
+            goodChars.splice(goodIdx, 1);
+          }
+        }
       }
     });
 
@@ -326,6 +333,7 @@ export function GameComponent() {
     squareDim: number,
     parentWidth: number,
     showLetters: boolean,
+    hasHiddenRows: boolean,
     keyPrefix: string,
     isEditable: boolean,
     editableIndex: number | undefined = undefined
@@ -342,6 +350,7 @@ export function GameComponent() {
         onSquareSelect={isEditable ? handleSquareSelected : undefined}
         parentWidth={parentWidth}
         showLetters={showLetters}
+        hasHiddenRows={hasHiddenRows}
         keyPrefix={keyPrefix}
         squareDim={squareDim}
       />
@@ -360,7 +369,10 @@ export function GameComponent() {
     if (!status) {
       return null;
     }
-    let guesses = status.guesses
+    let guesses = status.guesses;
+    let curWordIndex = 0;
+    let guessCount = 0;
+    let hasHiddenRows = false;
     if (orderByKey) {
       guesses = guesses.slice().sort((a, b) => a.key - b.key);
     }
@@ -368,6 +380,16 @@ export function GameComponent() {
     return (
       <YStack marginTop={10}>
         {guesses.map((guess, _) => {
+          if (guess.wordIndex !== curWordIndex) {
+            guessCount = 0;
+            curWordIndex = guess.wordIndex;
+            hasHiddenRows = false;
+          }
+          guessCount++;
+          if (guessCount > 1) {
+            hasHiddenRows = true;
+          }
+  
           const isVisible =
             showRows ||
             visibleWordIndices.has(guess.wordIndex) ||
@@ -376,14 +398,14 @@ export function GameComponent() {
           if (!isVisible) {
             return null;
           }
-  
+
           const shouldInsertSpacer =
             status.state != GameState.Solved
             && guess.state == GuessState.Solved
             && guess.wordIndex === anagramGuess - 1
             && showLetters
   
-          return renderGuessRow(guess, shouldInsertSpacer, squareDim, parentWidth, showLetters, keyPrefix, notEditable);
+          return renderGuessRow(guess, shouldInsertSpacer, squareDim, parentWidth, showLetters, hasHiddenRows, keyPrefix, notEditable);
         })}
         {renderGuessRow(
           currentGuess,
@@ -391,6 +413,7 @@ export function GameComponent() {
           squareWidth,
           screenDim.width,
           showLetters,
+          false,
           "main",
           editable,
           editableIndex)}

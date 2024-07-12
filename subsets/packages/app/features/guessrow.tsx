@@ -1,6 +1,7 @@
-import { Stack } from 'tamagui'
+import { XStack } from 'tamagui'
+import { ChevronsUpDown } from '@tamagui/lucide-icons'
 import Square from './square'
-import { Guess, Clue } from '../types/'
+import { Guess, Clue, GuessState } from '../types/'
 
 interface GuessRowProps {
   guess: Guess
@@ -10,6 +11,7 @@ interface GuessRowProps {
   editableIndex?: number
   parentWidth: number
   showLetters: boolean
+  hasHiddenRows: boolean
   squareDim: number
   keyPrefix: string
   onRowPress?: () => void
@@ -25,6 +27,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
   parentWidth,
   squareDim,
   showLetters,
+  hasHiddenRows,
   keyPrefix,
   onRowPress = null,
   onSquareSelect = null,
@@ -39,7 +42,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
   }
 
   return (
-    <Stack
+    <XStack
       flexDirection="row"
       style={{
         position: 'relative',
@@ -62,7 +65,11 @@ const GuessRow: React.FC<GuessRowProps> = ({
           onPress={() => handleSquarePress(index)}
         />
       ))}
-    </Stack>
+      {
+        guess.state === GuessState.Solved && guess.wordIndex > 1 && hasHiddenRows &&
+        <ChevronsUpDown size="$1" marginTop={12} color="$gray9Light" />
+      }
+    </XStack>
   )
 }
 
