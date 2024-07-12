@@ -147,7 +147,24 @@ export function GameComponent() {
     if (gameState == GameState.Solved) { return [[]] }
 
     const secondRow = [backspace, shuffle, 'ENTER'];
-    const firstRow = keyArr.map(c => c.toUpperCase());
+    let firstRow = keyArr.map(c => c.toUpperCase());
+
+    const goodTypes = [ClueType.AllCorrect, ClueType.CorrectLetter];
+    guesses.forEach((guess) => {
+      if (guess.wordIndex !== wordIndex) { return; }
+      const chars = guess.characters;
+      const badChars = chars.filter(c => c.clueType == ClueType.Incorrect).map(c => c.letter.toUpperCase());
+      if (badChars.length > 0) {
+        firstRow = firstRow.filter(c => !badChars.includes(c));
+      }
+
+      const goodChars = chars.filter(c => goodTypes.includes(c.clueType)).map(c => c.letter.toUpperCase());
+      if (goodChars.length === wordIndex + 2) {
+        const badChars = firstRow.filter(c => !goodChars.includes(c));
+        firstRow = firstRow.filter(c => !badChars.includes(c));
+      }
+    });
+
     return [firstRow, secondRow];
   }  
 
@@ -166,7 +183,6 @@ export function GameComponent() {
       } else {
         setError('Incomplete guess')
         setTimeout(() => setError(''), 2000)
-        return false
       }
       keyboardRef.current?.enableKey('ENTER')
     } else if (key == shuffle) {

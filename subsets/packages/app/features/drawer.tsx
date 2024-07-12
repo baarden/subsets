@@ -1,15 +1,10 @@
-import { YStack, XStack, Stack, Button, Image, Text, ListItem, ScrollView, styled } from 'tamagui';
+import { YStack, XStack, Stack, Button, Image, Text, ScrollView, styled } from 'tamagui';
 import { ChevronRight, XCircle } from '@tamagui/lucide-icons';
 
 const DefaultText = styled(Text, {
     fontSize: 12,
     textAlign: "left"
   })
-
-const DefaultListItem = styled(ListItem, {
-    backgroundColor: 'unset',
-    marginTop: 5,
-})
 
 const Drawer = ({ visible, onClose }) => {
   if (!visible) return null;
@@ -40,64 +35,75 @@ const Drawer = ({ visible, onClose }) => {
         padding={16}
       >
         <XStack justifyContent="flex-end">
-          <Text fontSize={18} fontWeight="bold" flex={5}>How To Play Subsets</Text>
+          <Text fontSize={18} fontWeight="bold" flex={5}>How To Play</Text>
           <Button size="$2" icon={XCircle} theme="light" onPress={onClose} flex={1} />
         </XStack>
         <ScrollView>
             <YStack padding={16}>
-                <DefaultText fontStyle="italic" backgroundColor="$blue4Light" padding={4}>
-                    <DefaultText fontWeight="bold">Subset:</DefaultText> a word using only letters from another longer word.
+              <XStack width="100%" backgroundColor="$blue3Light">
+                <Stack width={20}><ChevronRight width={15}/></Stack>
+                <DefaultText fontWeight="bold" marginTop={4}>
+                  Guess the next 5 words by adding 1 letter at each step.
                 </DefaultText>
+              </XStack>
+              <DefaultText marginTop={8}>
+                For example, if the starting word is "GAD", the solution might look like this:
+              </DefaultText>
+              <YStack alignItems="center" width="100%">
+                <Image src="/full_example.png" alt="Full example" width={292} height={218} marginVertical={8}/>
+              </YStack>
 
-                <DefaultText marginTop={8}>
-                  Guess the 5 Subsets of the starting word.
-                  For example, if the starting word is "RESPONDS", the solution might look like this:
+              <XStack backgroundColor="$blue3Light" marginTop={8}>
+                <Stack width={20}><ChevronRight width={15}/></Stack>
+                <DefaultText fontWeight="bold" marginTop={4}>
+                  Each guess must be a valid word of 4 letters or more.
                 </DefaultText>
-                <YStack alignItems="center" width="100%">
-                  <Image src="/full_example.png" alt="Full example" width={327} height={244} marginTop={8}/>
-                </YStack>
+              </XStack>
+              <XStack backgroundColor="$blue3Light">
+                <Stack width={20}><ChevronRight width={15}/></Stack>
+                <DefaultText fontWeight="bold" marginTop={4}>
+                  The correct guess will fill all the squares.
+                  But you can use shorter guesses to gather clues.
+                </DefaultText>
+              </XStack>
+              <XStack backgroundColor="$blue3Light">
+                <Stack width={20}><ChevronRight width={15}/></Stack>
+                <DefaultText fontWeight="bold" marginTop={4}>
+                  The color of the square shows how close your guess was to the correct answer.
+                </DefaultText>
+              </XStack>
 
-                <YStack marginTop={8}>
-                    <DefaultListItem icon={ChevronRight} size="$1">
-                        <DefaultText flex={1}>Each guess must be a subset of the previous word.</DefaultText>
-                    </DefaultListItem>
-                    <DefaultListItem icon={ChevronRight} size="$1">
-                        <DefaultText flex={1}>
-                            A guess must be a valid word of at least 3 letters.
-                        </DefaultText>
-                    </DefaultListItem>
-                    <DefaultListItem icon={ChevronRight} size="$1">
-                        <DefaultText flex={1}>
-                            The correct guess will fill all the spaces.
-                            But you can use shorter guesses to gather clues.
-                        </DefaultText>
-                    </DefaultListItem>
-                    <DefaultListItem icon={ChevronRight} size="$1">
-                        <DefaultText flex={1}>The color of the tile shows how close your guess was to the correct answer.</DefaultText>
-                    </DefaultListItem>
-                </YStack>
+              <DefaultText marginTop={8}>
+                For example, if you can't think of a 5-letter word, you could guess "LAID" to get some clues:
+              </DefaultText>
+              <YStack alignItems="center" width="100%">
+                <Image src="/example.png" alt="Example" width={205} height={42} marginVertical={8}/>
+              </YStack>
+              <DefaultText><DefaultText fontWeight="bold">L, A</DefaultText> are in the word but in the wrong spot.</DefaultText>
+              <DefaultText><DefaultText fontWeight="bold">I</DefaultText> is not in the word in any spot.</DefaultText>
+              <DefaultText><DefaultText fontWeight="bold">D</DefaultText> is in the word and in the correct spot.</DefaultText>
+              <DefaultText marginTop={8}>The last space isn't used, and doesn't provide a clue.</DefaultText>
 
-                <YStack alignItems="center" width="100%">
-                  <Image src="/example.png" alt="Example" width={166} height={42} marginTop={16}/>
-                </YStack>
-                <DefaultText><DefaultText fontWeight="bold">R</DefaultText> is in the word and in the correct spot.</DefaultText>
-                <DefaultText><DefaultText fontWeight="bold">E</DefaultText> is in the word but in the wrong spot.</DefaultText>
-                <DefaultText><DefaultText fontWeight="bold">S</DefaultText> is not in the word in any spot.</DefaultText>
-                <DefaultText marginTop={8}>The last space isn't used, and so doesn't provide any information.</DefaultText>
+              <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginTop={16}>SOLUTION</DefaultText>
+              <XStack backgroundColor="$blue3Light" marginTop={8}>
+                <Stack width={20}><ChevronRight width={15}/></Stack>
+                <DefaultText fontWeight="bold" marginTop={4}>
+                  Once you have all 6 words, solve the puzzle by finding the word hidden in the highlighted letters.
+                </DefaultText>
+              </XStack>
 
-                <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginTop={16}>SOLUTION</DefaultText>
-                <DefaultText marginTop={8}>Once you have all 6 words, solve the puzzle by finding the Subset in the
-                    highlighted letters. You'll briefly be shown a clue to the hidden word.
-                    In the example below, if you were shown the clue “destroy”, you might guess "POISON":</DefaultText>
-                <YStack alignItems="center" width="100%">
-                  <Image src="/anagram.png" alt="Example" width={250} height={228} marginTop={8}/>
-                </YStack>
+              <DefaultText marginTop={8}>
+                For example, given the clue below you might guess "DEPEND":
+              </DefaultText>
+              <YStack alignItems="center" width="100%">
+                <Image src="/anagram.png" alt="Example" width={278} height={288} marginTop={8}/>
+              </YStack>
 
-                <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginVertical={16}>SCORING</DefaultText>
-                <DefaultText><DefaultText fontWeight="bold">5-10 guesses:</DefaultText> Excellent!</DefaultText>
-                <DefaultText><DefaultText fontWeight="bold">11-12 guesses:</DefaultText> Great!</DefaultText>
-                <DefaultText><DefaultText fontWeight="bold">13-14 guesses:</DefaultText> Nice!</DefaultText>
-                <DefaultText><DefaultText fontWeight="bold">15+ guesses:</DefaultText> Good try!</DefaultText>
+              <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginVertical={16}>SCORING</DefaultText>
+              <DefaultText><DefaultText fontWeight="bold">5-10 guesses:</DefaultText> Excellent!</DefaultText>
+              <DefaultText><DefaultText fontWeight="bold">11-12 guesses:</DefaultText> Great!</DefaultText>
+              <DefaultText><DefaultText fontWeight="bold">13-14 guesses:</DefaultText> Nice!</DefaultText>
+              <DefaultText><DefaultText fontWeight="bold">15+ guesses:</DefaultText> Good try!</DefaultText>
 
             </YStack>
         </ScrollView>
