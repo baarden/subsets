@@ -17,13 +17,11 @@ export enum GameState {
   Unsolved = 1
 }
 
-// Represents the evaluation of a particular letter in a guess
 export interface Clue {
   letter: string;
   clueType: ClueType;
 }
 
-// Represents a single guess, which is a sequence of clues
 export interface Guess {
   key: number;
   characters: Clue[];
@@ -35,7 +33,6 @@ export interface Guess {
   highlightLetter: string;
 }
 
-// The main game status returned from the API
 export interface Status {
   clueWord: string;   // The word used as a clue for the current game
   guesses: Guess[];   // Array of previous guesses with clues

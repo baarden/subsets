@@ -67,12 +67,12 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
     const status: KeyStatus = keyStates[keyIdent];
     if (status === undefined) { return undefined; }
     if (status.active === false) {
-      return tokens.color.gray9Light; // "#ccc";
+      return tokens.color.gray9Light;
     }
     if (refWord.length === 8 || status.highlighted === false) {
-      return (keyIdent.includes(`_1_`)) ? tokens.color.gray6Light : tokens.color.yellow6Light; // "#ddd";
+      return (keyIdent.includes(`_1_`)) ? tokens.color.gray6Light : tokens.color.yellow6Light;
     }
-    return tokens.color.blue7Light; // "#ffb";
+    return tokens.color.blue7Light;
   }
 
   useImperativeHandle(ref, () => ({

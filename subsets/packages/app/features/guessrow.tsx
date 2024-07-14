@@ -84,7 +84,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
         )})
       }
       {
-        guess.state === GuessState.Solved && guess.wordIndex > 1 && hasHiddenRows &&
+        guess.state === GuessState.Solved && guess.wordIndex > 0 && hasHiddenRows &&
         <ChevronsUpDown size="$1" marginTop={12} color="$gray9Light" />
       }
     </XStack>

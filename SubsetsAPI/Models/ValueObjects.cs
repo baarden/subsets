@@ -16,7 +16,7 @@ public class Status
     public Guess? NextGuess { get; set; }
     public string ClueWord { get; set; } = "";
     public List<char> Characters { get; set; } = new List<char>();
-    public GuessState State { get; set; }
+    public GameState State { get; set; }
     public DateOnly Today { get; set; }
     public int Indent { get; set; }
 }

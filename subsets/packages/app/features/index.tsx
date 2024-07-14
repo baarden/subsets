@@ -101,7 +101,7 @@ export function GameComponent() {
       const isGuessInOne = penultGuess.state == GuessState.Solved
       const feedback = getFeedback(guesses, nextGuess.wordIndex, isGuessInOne)
       if (nextGuess.wordIndex == 7) {
-        setError("Add one more letter to solve")
+        setError("Arrange the plus-one letters to solve")
       } else if (nextGuess.wordIndex > 2) {
         setError(feedback)
       }
@@ -111,11 +111,13 @@ export function GameComponent() {
       setError('')
     }
     let refWord = ""
-    statusData.guesses.forEach(guess => {
-      if (guess.state === GuessState.Solved) {
-        refWord = guess.guessWord
-      }
-    })
+    if (statusData.nextGuess.wordIndex < anagramGuess) {
+      statusData.guesses.forEach(guess => {
+        if (guess.state === GuessState.Solved) {
+          refWord = guess.guessWord
+        }
+      })
+    }
     setReferenceWord(refWord)
   }
 
@@ -161,7 +163,7 @@ export function GameComponent() {
       });
 
       const goodChars = chars.filter(c => goodTypes.includes(c.clueType)).map(c => c.letter.toUpperCase());
-      if (goodChars.length === wordIndex + 2) {
+      if (goodChars.length === wordIndex + 1) {
         for (let i = firstRow.length - 1; i >= 0; i--) {
           const goodIdx = goodChars.indexOf(firstRow[i]);
           if (goodIdx === -1) {

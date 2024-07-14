@@ -77,13 +77,13 @@ public class GameService
 
             if (guess.State == GuessState.Solved && maxWordIndex == ExtraLetterIndex) {
                 string finalLetter = gameData.HighlightLetter(ExtraLetterIndex);
-                Guess finalGuess = GetGuess(++key, finalLetter, finalLetter, ExtraLetterIndex, 1);
+                Guess finalGuess = GetGuess(++key, finalLetter, finalLetter, ExtraLetterIndex, 1, finalLetter);
                 status.Guesses.Add(finalGuess);
                 maxWordIndex++;
             }
         }
 
-        status.State = (maxWordIndex <= AnagramIndex) ? GuessState.Unsolved : GuessState.Solved;
+        status.State = (maxWordIndex <= AnagramIndex) ? GameState.Unsolved : GameState.Solved;
         string? refWord = null;
 
         List<char> gameChars = (maxWordIndex == AnagramIndex) ? 
@@ -92,7 +92,7 @@ public class GameService
         gameChars.Sort();
         status.Characters = gameChars;
 
-        if (status.State == GuessState.Unsolved)
+        if (status.State == GameState.Unsolved)
         {
             refWord = gameData.ReferenceWord(maxWordIndex);
             int offset = 0;
