@@ -13,6 +13,7 @@ import { GuessState, Status, Guess, GameState, emptyGuess, ClueType, Statistics 
 
 const squareWidth: number = 45
 const anagramGuess: number = 7
+const extraLetter: number = 6
 const titleBarHeight: number = 70
 const bottomPanelHeight: number = 140
 const scoringPanelWidth: number = 140
@@ -100,7 +101,7 @@ export function GameComponent() {
       const isGuessInOne = penultGuess.state == GuessState.Solved
       const feedback = getFeedback(guesses, nextGuess.wordIndex, isGuessInOne)
       if (nextGuess.wordIndex == 7) {
-        setError("Congrats! Find the hidden word to solve.")
+        setError("Add one more letter to solve")
       } else if (nextGuess.wordIndex > 2) {
         setError(feedback)
       }
@@ -402,7 +403,7 @@ export function GameComponent() {
           const shouldInsertSpacer =
             status.state != GameState.Solved
             && guess.state == GuessState.Solved
-            && guess.wordIndex === anagramGuess - 1
+            && guess.wordIndex === extraLetter
             && showLetters
   
           return renderGuessRow(guess, shouldInsertSpacer, squareDim, parentWidth, showLetters, hasHiddenRows, keyPrefix, notEditable);
@@ -499,7 +500,7 @@ export function GameComponent() {
           renderGuessRows(squareWidth, screenDim.width, showLetters, hideRows, orderByPosition, "main")
         }
         { (status?.state == GameState.Unsolved && status.nextGuess.wordIndex == 7) &&
-          <YStack alignItems='center' width="100%" marginTop={8}>
+          <YStack alignItems='center' width="100%" marginVertical={8}>
             <Text fontWeight='bold' fontSize={12}>CLUE: “{status?.clueWord}”</Text>
           </YStack>
         }

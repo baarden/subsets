@@ -6,6 +6,7 @@ CREATE TABLE subsets (
 	Bigrams INT[],
 	Anagram TEXT,
 	AnagramOffsets INT[],
+	AnagramSources CHAR[],
 	ClueWord TEXT,
 	Ranking FLOAT,
 	Batch INT,

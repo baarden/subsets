@@ -1,9 +1,8 @@
-﻿namespace SubsetsAPI.Models.ValueObjects;
+﻿using static SubsetsAPI.Constants;
 
-public enum GuessState { Solved, Unsolved }
-public enum ClueType { CorrectLetter, AllCorrect, Incorrect, Empty }
+namespace SubsetsAPI.Models;
 
-public record GameDayData(string ClueWord, string Anagram, int[] AnagramOffsets, string[] SubsetWords);
+public record GameDayData(string ClueWord, string Anagram, string[] AnagramSources, string[] SubsetWords);
 public record GuessData(string GuessText, int ReferenceWordIndex, int GuessNumber);
 
 public class GuessPayload
@@ -30,6 +29,7 @@ public class Guess
     public int WordIndex { get; set; }
     public int Length { get; set; }
     public int Offset { get; set; }
+    public string HighlightLetter { get; set; } = "";
     public GuessState State { get; set; }
 }
 

@@ -34,10 +34,12 @@ export const fetchStatus = async (): Promise<Status> => {
                 : ClueType.Empty,
           })
         ),
+        guessWord: "",
         length: data.nextGuess.length,
         wordIndex: data.nextGuess.wordIndex,
         state: GuessState.Unsolved,
         offset: data.nextGuess.offset,
+        highlightLetter: ""
       }
     : emptyGuess
 
@@ -61,6 +63,7 @@ export const fetchStatus = async (): Promise<Status> => {
         wordIndex: guess.wordIndex,
         state: guess.state,
         offset: guess.offset,
+        highlightLetter: guess.highlightLetter
       })
     ),
     nextGuess: nextGuess,

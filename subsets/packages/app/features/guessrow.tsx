@@ -18,6 +18,8 @@ interface GuessRowProps {
   onSquareSelect?: (index: number) => void
 }
 
+const extraLetterIndex = 6
+
 const GuessRow: React.FC<GuessRowProps> = ({
   guess,
   style,
@@ -32,8 +34,15 @@ const GuessRow: React.FC<GuessRowProps> = ({
   onRowPress = null,
   onSquareSelect = null,
 }) => {
-  const offset = isAnagramGuess ? guess.offset : guess.length;
+  const extraLetter: boolean = (guess.wordIndex === extraLetterIndex)
+  let offset = guess.length
+  if (extraLetter) {
+    offset = 1
+  } else if (isAnagramGuess) {
+    offset = guess.characters.findIndex(c => c.letter === guess.highlightLetter) + 1
+  }
   const leftPad = parentWidth / 2 - offset * squareDim / 2;
+  let hLetter : string = guess.highlightLetter;
 
   const handleSquarePress = (index: number) => {
     if (onSquareSelect != null) {
@@ -53,18 +62,27 @@ const GuessRow: React.FC<GuessRowProps> = ({
       backgroundColor="$gray3Light"
       onPress={onRowPress || undefined}
     >
-      {guess.characters.map((clue: Clue, index: number) => (
-        <Square
+      {guess.characters.map((clue: Clue, index: number) => {
+        let highlighted = false;
+        if (clue.letter === hLetter && guess.state === GuessState.Solved
+            && (guess.length > 3 || isAnagramGuess)) {
+          highlighted = true;
+          hLetter = "";
+        }
+        return (
+          <Square
           key={keyPrefix + '_square' + index + '_' + guess.key}
           letter={showLetters ? clue.letter : ''}
           clueType={clue.clueType}
           dimension={squareDim}
           isAnagramGuess={isAnagramGuess}
-          isAnagramLetter={isAnagramGuess && index === guess.offset - 1}
+          isAnagramLetter={isAnagramGuess && (highlighted || extraLetter)}
+          isHighlighted={highlighted}
           isEditable={isEditable && index === editableIndex}
           onPress={() => handleSquarePress(index)}
         />
-      ))}
+        )})
+      }
       {
         guess.state === GuessState.Solved && guess.wordIndex > 1 && hasHiddenRows &&
         <ChevronsUpDown size="$1" marginTop={12} color="$gray9Light" />

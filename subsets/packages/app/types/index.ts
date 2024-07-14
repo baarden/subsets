@@ -32,6 +32,7 @@ export interface Guess {
   wordIndex: number;
   state: GuessState;
   offset: number;
+  highlightLetter: string;
 }
 
 // The main game status returned from the API
@@ -55,6 +56,7 @@ export const emptyGuess: Guess = {
   characters: [],
   guessWord: "",
   offset: 0,
+  highlightLetter: "",
   length: 0,
   wordIndex: 0,
   state: GuessState.Unsolved,

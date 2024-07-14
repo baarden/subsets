@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using Microsoft.OpenApi.Services;
 using Npgsql;
-using SubsetsAPI.Models.ValueObjects;
+using SubsetsAPI.Models;
+using static SubsetsAPI.Constants;
 
 namespace SubsetsAPI;
 
 public class GameService
 {
     private readonly string _connectionString;
-    private const int _MaxWordIndex = 7;
 
     public GameService(string connectionString)
     {
@@ -57,44 +58,53 @@ public class GameService
         AddStartingGuess(status, gameData);
 
         List<GuessData> guessDataList = FetchGuessData(userId, today);
-        int maxWordIndex = 2;
+        int maxWordIndex = 1;
         foreach (var guessData in guessDataList)
         {
-            int offset = (guessData.ReferenceWordIndex == _MaxWordIndex) ? (int)(guessData.GuessText.Length / 2) : gameData.Offset(guessData.ReferenceWordIndex);
+            int offset = 0;
+            string highlightLetter = gameData.HighlightLetter(guessData.ReferenceWordIndex);
             Guess guess = GetGuess(
                 ++key,
                 guessData.GuessText,
                 gameData.ReferenceWord(guessData.ReferenceWordIndex), 
                 guessData.ReferenceWordIndex, 
-                offset
+                offset,
+                highlightLetter
             );
             status.Guesses.Add(guess);
 
             maxWordIndex = (guess.State == GuessState.Solved) ? guess.WordIndex + 1 : guess.WordIndex;
+
+            if (guess.State == GuessState.Solved && maxWordIndex == ExtraLetterIndex) {
+                string finalLetter = gameData.HighlightLetter(ExtraLetterIndex);
+                Guess finalGuess = GetGuess(++key, finalLetter, finalLetter, ExtraLetterIndex, 1);
+                status.Guesses.Add(finalGuess);
+                maxWordIndex++;
+            }
         }
 
-        status.State = (maxWordIndex <= _MaxWordIndex) ? GuessState.Unsolved : GuessState.Solved;
+        status.State = (maxWordIndex <= AnagramIndex) ? GuessState.Unsolved : GuessState.Solved;
         string? refWord = null;
 
-        List<char> gameChars = (maxWordIndex < _MaxWordIndex) ? gameData.ReferenceWord(6).ToList() : gameData.ReferenceWord(7).ToList();
+        List<char> gameChars = (maxWordIndex == AnagramIndex) ? 
+            gameData.ReferenceWord(AnagramIndex).ToList() :
+            gameData.ReferenceWord(LastPlusOneIndex).ToList(); 
         gameChars.Sort();
         status.Characters = gameChars;
 
         if (status.State == GuessState.Unsolved)
         {
             refWord = gameData.ReferenceWord(maxWordIndex);
-            int offset = (maxWordIndex == _MaxWordIndex) ? (int)(refWord.Length / 2) : gameData.Offset(maxWordIndex);
+            int offset = 0;
             status.NextGuess = GetGuess(++key, "", refWord, maxWordIndex, offset);
         } else {
             int[] newOrder = gameData.AnagramSortOrder();
-            List<Guess> guesses = newOrder.SelectMany(i => status.Guesses.Where(g => g.WordIndex == i + 1)).ToList();
+            List<Guess> guesses = newOrder.SelectMany(i => status.Guesses.Where(g => g.WordIndex == i)).ToList();
             status.Guesses = guesses;
         }
  
         // Indent should be relative to the leftmost position of the 3-letter word; see also offset
-        status.Indent = Enumerable.Range(1, _MaxWordIndex)
-                         .Select(x => gameData.Offset(x))
-                         .Max();
+        status.Indent = 0;
 
         return (status, refWord);
     }
@@ -165,9 +175,10 @@ public class GameService
 
     private static void AddStartingGuess(Status status, GameDayDataProvider gameData)
     {
-        int index = 1;
+        int index = 0;
         string startWord = gameData.ReferenceWord(index);
-        status.Guesses.Add(GetGuess(0, startWord, startWord, index, gameData.Offset(index)));
+        string highlightLetter = gameData.HighlightLetter(index);
+        status.Guesses.Add(GetGuess(0, startWord, startWord, index, 0, highlightLetter));
     }
 
     private List<GuessData> FetchGuessData(int userId, DateOnly playDate)
@@ -201,7 +212,13 @@ public class GameService
         return guesses;
     }
 
-    private static Guess GetGuess(int key, string guess, string referenceWord, int wordIndex, int offset)
+    private static Guess GetGuess(
+        int key,
+        string guess,
+        string referenceWord,
+        int wordIndex,
+        int offset,
+        string highlightLetter="")
     {
         var newGuess = new Guess
         {
@@ -217,6 +234,7 @@ public class GameService
         if (newGuess.Characters.All(c => c.Type == ClueType.AllCorrect))
         {
             newGuess.State = GuessState.Solved;
+            newGuess.HighlightLetter = highlightLetter;
         }
         return newGuess;
     }
@@ -230,8 +248,8 @@ public class GameService
         // Initialize counts from the reference word
         foreach (char c in referenceWord)
         {
-            if (referenceCharCount.ContainsKey(c))
-                referenceCharCount[c]++;
+            if (referenceCharCount.TryGetValue(c, out int value))
+                referenceCharCount[c] = ++value;
             else
                 referenceCharCount[c] = 1;
 
@@ -292,7 +310,7 @@ public class GameService
 
         var gameData = new GameDayDataProvider(guessDate, _connectionString);
 
-        string refWord = (guessWordIndex < _MaxWordIndex) ? gameData.ReferenceWord(guessWordIndex - 1) : gameData.ReferenceWord(_MaxWordIndex);
+        string refWord = gameData.ReferenceWord(guessWordIndex);
 
         using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
@@ -337,8 +355,6 @@ public class GameService
 
 public class GameDayDataProvider
 {
-    private const int _MaxWordIndex = 7;
-
     public readonly string ClueWord;
     private readonly string _connectionString;
     private readonly GameDayData _gameDayData;
@@ -352,36 +368,32 @@ public class GameDayDataProvider
 
     public string ReferenceWord(int index)
     {
-        return (index == _MaxWordIndex) ? _gameDayData.Anagram : _gameDayData.SubsetWords[index - 1];
+        return (index == AnagramIndex) ? _gameDayData.Anagram : _gameDayData.SubsetWords[index];
     }
 
     public int Offset(int index)
     {
-        return (index == _MaxWordIndex) ? 0 : _gameDayData.AnagramOffsets[index - 1];
+        return 1;
+    }
+
+    public string HighlightLetter(int wordIndex)
+    {
+        if (wordIndex == AnagramIndex) { return ""; }
+        return _gameDayData.AnagramSources[wordIndex];
     }
 
     public int[] AnagramSortOrder()
     {
-        var words = _gameDayData.SubsetWords;
-        var offsets = _gameDayData.AnagramOffsets;
-        var charToIndices = new Dictionary<char, SortedList<int, int>>();
-        for (int i = 0; i < words.Length; i++) {
-            string word = words[i];
-            char chr = word[offsets[i] - 1];
-            try {
-                charToIndices[chr].Add(i, i);            
-            } catch (KeyNotFoundException) {
-                charToIndices[chr] = new SortedList<int, int>() { {i, i} };
-            }
-        }
+        string[] words = _gameDayData.SubsetWords;
+        string anagram = _gameDayData.Anagram;
+        List<string> charSources = _gameDayData.AnagramSources.ToList();
 
-        var anagram = _gameDayData.Anagram;
         var sortOrder = new int[anagram.Length];
         for (int i = 0; i < anagram.Length; i++)
         {
-            SortedList<int, int> sortedIndices = charToIndices[anagram[i]];
-            sortOrder[i] = sortedIndices.Keys[0];
-            sortedIndices.RemoveAt(0);
+            int idx = charSources.IndexOf(anagram[i].ToString());
+            sortOrder[i] = idx;
+            charSources[idx] = "";
         }
         return sortOrder;
     }
@@ -392,8 +404,8 @@ public class GameDayDataProvider
         conn.Open();
 
         string deltaQuery = @"
-            SELECT ClueWord, Anagram, AnagramOffsets, Words
-            FROM subsets
+            SELECT ClueWord, Anagram, AnagramSources, Words
+            FROM subsets2
             WHERE PlayDate = @PlayDate;
         ";
 
@@ -403,15 +415,21 @@ public class GameDayDataProvider
         using var reader = cmd.ExecuteReader();
         if (reader.Read())
         {
-            string clueWord = (string)reader["ClueWord"];
-            string anagram = (string)reader["Anagram"];
-            int[] anagramOffsets = (int[])reader["AnagramOffsets"];
-            string[] words = (string[])reader["Words"];
+            var clueWord = (string)reader["ClueWord"];
+            var anagram = (string)reader["Anagram"];
+            var anagramSourceArr = (string[])reader["AnagramSources"];
+            var words = (string[])reader["Words"];
+
+            List<string> anagramSourceList = anagramSourceArr.ToList();
+            anagramSourceList.Reverse();
+            string extra = anagramSourceList[0];
+            anagramSourceList.RemoveAt(0);
+            anagramSourceList.Add(extra);
+            string[] anagramSources = anagramSourceList.ToArray();
 
             Array.Reverse(words);
-            Array.Reverse(anagramOffsets);
 
-            return new GameDayData(ClueWord: clueWord, Anagram: anagram, AnagramOffsets: anagramOffsets, SubsetWords: words);
+            return new GameDayData(ClueWord: clueWord, Anagram: anagram, AnagramSources: anagramSources, SubsetWords: words);
         }
 
         throw new Exception("No game data today");

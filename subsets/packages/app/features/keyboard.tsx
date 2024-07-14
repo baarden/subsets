@@ -1,5 +1,7 @@
 import { useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import { Stack, XStack, YStack, Button, Text } from 'tamagui';
+import { tokens } from '@tamagui/config/v3';
+import { Variable } from '@my/ui';
 import LottieView from 'lottie-react-native';
 
 interface KeyboardProps {
@@ -61,15 +63,16 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
     }
   };
 
-  const getKeyColor = (status: KeyStatus | undefined) : string => {
-    if (status === undefined) { return ""; }
+  const getKeyColor = (keyIdent: string) : Variable | undefined => {
+    const status: KeyStatus = keyStates[keyIdent];
+    if (status === undefined) { return undefined; }
     if (status.active === false) {
-      return "#ccc";
+      return tokens.color.gray9Light; // "#ccc";
     }
     if (refWord.length === 8 || status.highlighted === false) {
-      return "#ddd";
+      return (keyIdent.includes(`_1_`)) ? tokens.color.gray6Light : tokens.color.yellow6Light; // "#ddd";
     }
-    return "#ffb";
+    return tokens.color.blue7Light; // "#ffb";
   }
 
   useImperativeHandle(ref, () => ({
@@ -93,9 +96,11 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
                   padding: 0,
                   marginHorizontal: 0.5,
                   borderRadius: 4,
+                  borderColor: "$gray8Light",
+                  borderWidth: 1,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  backgroundColor: getKeyColor(keyStates[keyIdentifier]),
+                  backgroundColor: getKeyColor(keyIdentifier),
                 }}
               >
                 {keyStates[keyIdentifier].active || !keyIdentifier.startsWith("keyENTER") ? (

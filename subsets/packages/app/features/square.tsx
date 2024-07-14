@@ -16,6 +16,7 @@ interface SquareProps {
   dimension: number
   isAnagramGuess: boolean
   isAnagramLetter: boolean
+  isHighlighted: boolean
   isEditable?: boolean,
   onPress: () => void
 }
@@ -26,6 +27,7 @@ const Square: React.FC<SquareProps> = ({
   dimension,
   isAnagramGuess,
   isAnagramLetter = false,
+  isHighlighted,
   isEditable = false,
   onPress,
 }) => {
@@ -35,9 +37,12 @@ const Square: React.FC<SquareProps> = ({
   const squareWidth = (normalWidth) ? squareHeight : 0.5 * squareHeight
 
   const getBackgroundColor = () => {
+    if (isHighlighted) {
+      return customTokens.color.yellow6Light
+    }
     switch (clueType) {
       case ClueType.AllCorrect:
-        return (normalWidth) ? customTokens.color.blue7Light : customTokens.color.gray8Light
+        return customTokens.color.blue7Light //: customTokens.color.gray8Light
       case ClueType.CorrectLetter:
         return customTokens.color.orange8Light
       case ClueType.Incorrect:

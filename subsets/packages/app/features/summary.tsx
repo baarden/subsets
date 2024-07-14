@@ -111,7 +111,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
             padding={16}
         >
             <YStack alignItems="center" width="100%">
-                <Image src="/logotype.png" alt="Subsets" width={99} height={62} />
+                <Image src="/logotype.png" alt="Subsets" width={77} height={60} />
                 <Button size="$2" icon={XCircle} theme="light" onPress={onClose} position="absolute" right={0} />
             </YStack>
             <ScrollView>

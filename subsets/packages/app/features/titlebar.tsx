@@ -18,8 +18,8 @@ const TitleBar: React.FC<TitleBarProps> = ({ guessCount, onInfoPress }) => {
             borderBottomColor="$gray7Light"
             borderBottomWidth={1}
         >
-            <Stack position="absolute" left={5}>
-                <Image src="/logotype.png" alt="Subsets logo" width={66} height={41} zIndex={5} />
+            <Stack position="absolute" left={10}>
+                <Image src="/logotype.png" alt="Subsets logo" width={52} height={40} zIndex={5} />
             </Stack>
             <YStack
                 alignItems="center"

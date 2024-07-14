@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
-using SubsetsAPI.Models.ValueObjects;
+using SubsetsAPI.Models;
 using System.Text.RegularExpressions;
 
 namespace SubsetsAPI.Controllers;
