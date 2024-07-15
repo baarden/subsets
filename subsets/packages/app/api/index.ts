@@ -1,7 +1,7 @@
 import { Status, ClueType, Clue, Guess, GuessState, emptyGuess, Statistics } from '../types/'
 
 const API_BASE_URL = (process.env.NODE_ENV === 'development') ? 
-  'http://localhost:8080/api' : 'https://subsets.ngrok.app/api';
+  'http://localhost:8080/api' : 'https://plusone.ngrok.app/api';
 
 export const fetchStatus = async (): Promise<Status> => {
   var data: Status
