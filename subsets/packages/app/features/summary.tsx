@@ -42,7 +42,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
 
     const shareStatus = () => {
         if (!status) { return }
-        let share: string[] = [`Subsets in ${status.guesses.length - 1}!`];
+        let share: string[] = [`Plus One in ${status.guesses.length - 1}!`];
         const guesses = [...status.guesses].sort((a, b) => a.key - b.key)
         guesses.forEach((value: Guess, index: number) => {
             if (value.wordIndex === extraLetterIndex) { return; }
@@ -69,7 +69,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
             }
             share.push(row);
         })
-        share.push("https://subsets.ngrok.app")
+        share.push("https://plusone.ngrok.app")
         copyToClipboard(share.join("\n"));
     }
 
