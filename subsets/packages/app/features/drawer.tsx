@@ -47,7 +47,7 @@ const Drawer = ({ visible, onClose }) => {
                 </DefaultText>
               </XStack>
               <DefaultText marginTop={8}>
-                For example, if the starting word is "ACE", the solution might look like this:
+                For example, if the starting word is "ACE", the answers might look like this:
               </DefaultText>
               <YStack alignItems="center" width="100%">
                 <Image src="/full_example.png" alt="Full example" width={292} height={218} marginVertical={8}/>
@@ -59,14 +59,14 @@ const Drawer = ({ visible, onClose }) => {
               <XStack backgroundColor="$blue3Light" marginTop={8}>
                 <Stack width={20}><ChevronRight width={15}/></Stack>
                 <DefaultText fontWeight="bold" marginTop={4}>
-                  Each guess must be a valid word of 4 letters or more.
+                  The correct guess will fill all the squares.
+                  But you can use shorter guesses to gather clues.
                 </DefaultText>
               </XStack>
               <XStack backgroundColor="$blue3Light">
                 <Stack width={20}><ChevronRight width={15}/></Stack>
                 <DefaultText fontWeight="bold" marginTop={4}>
-                  The correct guess will fill all the squares.
-                  But you can use shorter guesses to gather clues.
+                  Each guess must be a valid word of 4 letters or more.
                 </DefaultText>
               </XStack>
               <XStack backgroundColor="$blue3Light">

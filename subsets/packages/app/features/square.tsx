@@ -1,5 +1,7 @@
 import { Stack, Text, createTokens } from 'tamagui'
 import { tokens as baseTokens } from '@tamagui/config/v3'
+import LottieView from 'lottie-react-native';
+import { Variable } from '@my/ui'
 import { ClueType } from '../types/'
 
 const customTokens = createTokens({
@@ -36,10 +38,7 @@ const Square: React.FC<SquareProps> = ({
   const normalWidth = !isAnagramGuess || isAnagramLetter
   const squareWidth = (normalWidth) ? squareHeight : 0.5 * squareHeight
 
-  const getBackgroundColor = () => {
-    if (isHighlighted) {
-      return customTokens.color.yellow6Light
-    }
+  const getBackgroundColor = (): Variable => {
     switch (clueType) {
       case ClueType.AllCorrect:
         return customTokens.color.blue7Light //: customTokens.color.gray8Light
@@ -52,13 +51,24 @@ const Square: React.FC<SquareProps> = ({
     }
   }
 
+  const getBorderColor = (): Variable => {
+    if (isEditable) {
+      return customTokens.color.blue8Dark;
+    }
+    return customTokens.color.gray9Light;
+  }
+
+  const getBorderWidth = () => {
+    return (isEditable) ? 3 : 1.5;
+  }
+
   return (
     <Stack
       width={squareWidth}
       height={squareHeight}
       backgroundColor={getBackgroundColor()}
-      borderColor={isEditable ? 'blue' : "$gray8Light"}
-      borderWidth={ isEditable ? 3 : 1.5 }
+      borderColor={getBorderColor()}
+      borderWidth={getBorderWidth()}
       borderRadius={5}
       marginVertical={squareMargin}
       marginHorizontal={ normalWidth ? squareMargin : squareMargin / 2 }
@@ -68,7 +78,20 @@ const Square: React.FC<SquareProps> = ({
       display="flex"
       onPress={onPress}
     >
-      <Text color={'black'} fontSize={18} fontWeight={normalWidth ? "bold" : "unset"}>
+      { isHighlighted &&
+        <LottieView
+          source={require("../assets/shimmer.json")}
+          autoPlay
+          width={squareWidth}
+          height={squareHeight}
+          loop
+          speed={1.0 + 0.5 * (Math.random() - 0.5)}
+          position='absolute'
+          top={0}
+          left={0}
+        />
+      }
+      <Text position='absolute' zIndex={5} color={'black'} fontSize={18} fontWeight={normalWidth ? "bold" : "unset"}>
         {letter.toUpperCase()}</Text>
     </Stack>
   )

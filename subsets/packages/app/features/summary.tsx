@@ -9,6 +9,7 @@ const blueSquare = "\ud83d\udfe6";
 const redSquare = "\ud83d\udfe5";
 const whiteSquare = "\u2b1c";
 const blackSquare = "\u2b1b";
+const extraLetterIndex = 6;
 
 
 const DefaultText = styled(Text, {
@@ -44,6 +45,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
         let share: string[] = [`Subsets in ${status.guesses.length - 1}!`];
         const guesses = [...status.guesses].sort((a, b) => a.key - b.key)
         guesses.forEach((value: Guess, index: number) => {
+            if (value.wordIndex === extraLetterIndex) { return; }
             let row: string = "";
             const indent:number = 3 - Math.ceil(value.wordIndex / 2);
             for (let i:number = 0; i < indent; i++) {

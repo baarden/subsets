@@ -20,6 +20,7 @@ export interface KeyboardHandles {
 }
 
 const backspace = '\u232B'
+const buttonHeight = 55
 
 const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, onKeyPress }, ref) => {
   const [keyStates, setKeyStates] = useState<{ [keyIdentifier: string]: KeyStatus }>({});
@@ -63,21 +64,44 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
     }
   };
 
-  const getKeyColor = (keyIdent: string) : Variable | undefined => {
-    const status: KeyStatus = keyStates[keyIdent];
-    if (status === undefined) { return undefined; }
-    if (status.active === false) {
-      return tokens.color.gray9Light;
-    }
-    if (refWord.length === 8 || status.highlighted === false) {
-      return (keyIdent.includes(`_1_`)) ? tokens.color.gray6Light : tokens.color.yellow6Light;
-    }
-    return tokens.color.blue7Light;
-  }
-
   useImperativeHandle(ref, () => ({
     enableKey,
   }));
+
+  const buttonContents = (keyIdentifier: string, letter: string, rowIndex: number, buttonWidth: number) => {
+    const status: KeyStatus = keyStates[keyIdentifier];
+    if (keyStates[keyIdentifier].active || !keyIdentifier.startsWith("keyENTER")) {
+      return (
+        <>
+          { !status.highlighted && rowIndex === 0 && status.active &&
+            <LottieView
+              source={require("../assets/shimmer.json")}
+              autoPlay
+              width={buttonWidth}
+              height={buttonHeight}
+              loop
+              speed={1.0 + 0.5 * (Math.random() - 0.5)}
+              position='absolute'
+              top={0}
+              left={0}
+            />
+          }
+          <Text color='black' style={{ fontSize: letter === 'ENTER' ? 12 : 16 }} position='absolute'>
+            {letter}
+          </Text>
+        </>
+      )
+    }
+    return (
+      <Stack marginTop={3} alignSelf='center'>
+        <LottieView
+          source={require("../assets/loading_dots.json")}
+          autoPlay
+          loop
+        />
+      </Stack>
+    )
+  };
 
   return (
     <YStack alignItems="center" gap={5} style={{ marginTop: 8 }}>
@@ -86,13 +110,15 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
           {row.map((letter, columnIndex) => {
             const keyIdentifier = `key${letter}_${rowIndex}_${columnIndex}`;
             if (!(keyIdentifier in keyStates)) { return; }
+            const status = keyStates[keyIdentifier];
+            const buttonWidth = rowIndex == 1 ? 75 : 40
             return (
               <Button
                 key={keyIdentifier}
                 onPress={() => handleKeyPress(keyIdentifier, letter)}
                 style={{
-                  width: rowIndex == 1 ? 75 : 40,
-                  height: 55,
+                  width: buttonWidth,
+                  height: buttonHeight,
                   padding: 0,
                   marginHorizontal: 0.5,
                   borderRadius: 4,
@@ -100,22 +126,10 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
                   borderWidth: 1,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  backgroundColor: getKeyColor(keyIdentifier),
+                  backgroundColor: status.active ? "$gray6Light" : "$gray9Light"
                 }}
               >
-                {keyStates[keyIdentifier].active || !keyIdentifier.startsWith("keyENTER") ? (
-                  <Text color='black' style={{ fontSize: letter === 'ENTER' ? 12 : 16 }}>
-                    {letter}
-                  </Text>
-                ) : (
-                  <Stack marginTop={3} alignSelf='center'>
-                    <LottieView
-                      source={require("../assets/loading_dots.json")}
-                      autoPlay
-                      loop
-                    />
-                  </Stack>
-                )}
+                {buttonContents(keyIdentifier, letter, rowIndex, buttonWidth)}
               </Button>
             );
           })}

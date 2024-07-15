@@ -86,24 +86,29 @@ public class GameService
         status.State = (maxWordIndex <= AnagramIndex) ? GameState.Unsolved : GameState.Solved;
         string? refWord = null;
 
-        List<char> gameChars = (maxWordIndex == AnagramIndex) ? 
-            gameData.ReferenceWord(AnagramIndex).ToList() :
-            gameData.ReferenceWord(LastPlusOneIndex).ToList(); 
-        gameChars.Sort();
+        int refCharIdx = (maxWordIndex == AnagramIndex) ? AnagramIndex : LastPlusOneIndex;
+        List<char> gameChars = gameData.ReferenceWord(refCharIdx).ToList(); 
+        string prevWord = (maxWordIndex == AnagramIndex) ? "" : gameData.ReferenceWord(maxWordIndex - 1);
+        gameChars.Sort((a, b) =>
+        {
+            bool aInRef = prevWord.Contains(a);
+            bool bInRef = prevWord.Contains(b);
+            if (aInRef && !bInRef) return -1;
+            if (!aInRef && bInRef) return 1;
+            return a.CompareTo(b);
+        });
         status.Characters = gameChars;
 
         if (status.State == GameState.Unsolved)
         {
             refWord = gameData.ReferenceWord(maxWordIndex);
-            int offset = 0;
-            status.NextGuess = GetGuess(++key, "", refWord, maxWordIndex, offset);
+            status.NextGuess = GetGuess(++key, "", refWord, maxWordIndex, 0);
         } else {
             int[] newOrder = gameData.AnagramSortOrder();
             List<Guess> guesses = newOrder.SelectMany(i => status.Guesses.Where(g => g.WordIndex == i)).ToList();
             status.Guesses = guesses;
         }
  
-        // Indent should be relative to the leftmost position of the 3-letter word; see also offset
         status.Indent = 0;
 
         return (status, refWord);

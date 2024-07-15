@@ -163,7 +163,7 @@ export function GameComponent() {
       });
 
       const goodChars = chars.filter(c => goodTypes.includes(c.clueType)).map(c => c.letter.toUpperCase());
-      if (goodChars.length === wordIndex + 1) {
+      if (goodChars.length === wordIndex + 3) {
         for (let i = firstRow.length - 1; i >= 0; i--) {
           const goodIdx = goodChars.indexOf(firstRow[i]);
           if (goodIdx === -1) {
