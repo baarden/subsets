@@ -41,7 +41,7 @@ const Square: React.FC<SquareProps> = ({
   const getBackgroundColor = (): Variable => {
     switch (clueType) {
       case ClueType.AllCorrect:
-        return customTokens.color.blue7Light //: customTokens.color.gray8Light
+        return (normalWidth) ? customTokens.color.blue7Light : customTokens.color.blue5Light
       case ClueType.CorrectLetter:
         return customTokens.color.orange8Light
       case ClueType.Incorrect:

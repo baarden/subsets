@@ -32,6 +32,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
     visible,
     onClose
 }) => {
+    if (status === undefined) { return }
     const [shareText, setShareText] = useState<string>("Share")
 
     const handleSharePress = () => {
@@ -119,7 +120,9 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
             <ScrollView>
                 <YStack padding={16}>
 
-                    <DefaultText fontSize={16} fontWeight={800} marginVertical={16}>Solved! {feedback}</DefaultText>
+                    <DefaultText fontSize={16} fontWeight={800} marginVertical={16}>
+                        You solved it in {status?.guesses.length - 1}! {feedback}
+                    </DefaultText>
 
                     <Stack alignItems='center' width="100%">
                         <Button icon={Share} backgroundColor="$blue4Light" borderWidth={1} width={150} onPress={handleSharePress}>

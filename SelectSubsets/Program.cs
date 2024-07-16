@@ -17,7 +17,11 @@ set playdate = p.playdate
 from playdates p
 where s.id = p.id
 ;
+*/
 
+/*
+TODO:
+Auto-delete sets with no anagram
 */
 
 class Program

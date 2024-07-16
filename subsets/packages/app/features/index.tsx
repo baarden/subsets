@@ -9,7 +9,7 @@ import Drawer from './drawer'
 import SummaryDrawer from './summary'
 import { fetchStatus, submitGuess, fetchStats } from '../api'
 import { Dimension, useResponsiveDimensions } from '../hooks/useResponsiveDimensions'
-import { GuessState, Status, Guess, GameState, emptyGuess, ClueType, Statistics } from '../types/'
+import { GuessState, Status, Guess, GameState, emptyGuess, Clue, ClueType, Statistics } from '../types/'
 
 const squareWidth: number = 45
 const anagramGuess: number = 7
@@ -83,19 +83,17 @@ export function GameComponent() {
     setStatus(statusData)
     setEditableIndex(0)
 
-    let keys: string[][] = getKeys(statusData.guesses, statusData.nextGuess.wordIndex, statusData.state, statusData.characters)
-    setKeyboardLayout(keys)
+    const prevGuess = statusData.guesses.slice(-1)[0]
     var nextGuess = statusData.nextGuess
     setCurrentGuess(nextGuess)
-    const guesses = statusData.guesses.length
-    setGuessCount(guesses - 1)
+    const guesses = statusData.guesses.length - 1
+    setGuessCount(guesses)
     if (statusData.state == GameState.Solved) {
       displaySummary(guesses)
       const feedback = getFeedback(guesses, 7, false)
-      setError(`Solved! ${feedback}`)
+      setError(`You solved it in ${guesses}! ${feedback}`)
       return
     }
-    const prevGuess = statusData.guesses.slice(-1)[0]
     if (prevGuess.state == GuessState.Solved) {
       const penultGuess = statusData.guesses.slice(-2)[0]
       const isGuessInOne = penultGuess.state == GuessState.Solved
@@ -119,6 +117,14 @@ export function GameComponent() {
       })
     }
     setReferenceWord(refWord)
+    let keys: string[][] = getKeys(
+      statusData.guesses,
+      statusData.nextGuess.wordIndex,
+      statusData.state,
+      statusData.characters,
+      refWord
+    )
+    setKeyboardLayout(keys)
   }
 
   const displaySummary = (guesses: number) => {
@@ -136,26 +142,67 @@ export function GameComponent() {
       return "Guess in one!"
     }
     const ranges = [
-      { min: 5, max: 10, message: "Excellent!" },
-      { min: 11, max: 12, message: "Great!" },
-      { min: 13, max: 14, message: "Nice!" },
+      { min: 5, max: 10, message: "Excellent job!" },
+      { min: 11, max: 12, message: "Great job!" },
+      { min: 13, max: 14, message: "Nice job!" },
       { min: 15, max: Infinity, message: "Good try!" },
     ];
-    const score = guesses + 6 - wordIndex
+    const score = guesses + 7 - wordIndex
     const feedback = ranges.find(range => score >= range.min && score <= range.max);
     return feedback ? feedback.message : "Invalid score";
   }
 
-  const getKeys = (guesses: Guess[], wordIndex: number, gameState: GameState, keyArr: string[]): string[][] => {
+  const getKeys = (
+    guesses: Guess[],
+    wordIndex: number,
+    gameState: GameState,
+    keyArr: string[],
+    refWord: string
+  ): string[][] => {
     if (gameState == GameState.Solved) { return [[]] }
 
-    const secondRow = [backspace, shuffle, 'ENTER'];
     let firstRow = keyArr.map(c => c.toUpperCase());
+    const secondRow = [backspace, shuffle, 'ENTER'];
 
     const goodTypes = [ClueType.AllCorrect, ClueType.CorrectLetter];
     guesses.forEach((guess) => {
       if (guess.wordIndex !== wordIndex) { return; }
+
       const chars = guess.characters;
+
+      // Check for any good guess characters that were not in the previous word
+      // If found, remove any other characters in firstRow that were not in the previous word
+      let plusChars: string[] = [...firstRow]
+      let plusOneChar = "";
+      let refChars: string[] = refWord.split('');
+      chars.forEach(c => {
+        if (!goodTypes.includes(c.clueType)) {return;}
+        const upperC = c.letter.toUpperCase();
+        const plusIdx = plusChars.findIndex(p => p === upperC);
+        plusChars.splice(plusIdx, 1);
+        const refCharsIdx = refChars.indexOf(c.letter)
+        if (refCharsIdx === -1) {
+          plusOneChar = upperC;
+        } else {
+          refChars.splice(refCharsIdx, 1);
+        }
+      });
+      if (plusOneChar) {
+        plusChars.forEach((c) => {
+          const refCharsIdx = refChars.findIndex(r => r.toUpperCase() === c);
+          if (refCharsIdx >= 0) {
+            refChars.splice(refCharsIdx, 1);
+            return;
+          }
+          if (c === plusOneChar) {
+            plusOneChar = "";
+            return;
+          }
+          const rowIdx = firstRow.indexOf(c);
+          firstRow.splice(rowIdx, 1);
+        });
+      }
+
       const badChars = chars.filter(c => c.clueType == ClueType.Incorrect).map(c => c.letter.toUpperCase());
       badChars.forEach(c => {
         const badIdx = firstRow.indexOf(c);
@@ -194,7 +241,7 @@ export function GameComponent() {
         setError('Incomplete guess')
         setTimeout(() => setError(''), 2000)
       }
-      keyboardRef.current?.enableKey('ENTER')
+      keyboardRef.current?.enableKey('ENTER', currentGuess.characters)
     } else if (key == shuffle) {
       let keys = [shuffleArray(keyboardLayout[0]), keyboardLayout[1]]
       setKeyboardLayout(keys)
@@ -217,17 +264,25 @@ export function GameComponent() {
         deletedChar = currentGuess.characters[editIndex].letter
         if (deletedChar === ' ') { return false }
       }
-      updateGuessCharacter(editIndex, ' ')
-      keyboardRef.current?.enableKey(deletedChar.toUpperCase())
+      const newCharacters = updateGuessCharacter(editIndex, ' ')
+      keyboardRef.current?.enableKey(deletedChar.toUpperCase(), newCharacters)
     } else if (editableIndex >= 0) {
-      let deletedChar = currentGuess.characters[editableIndex].letter
+      const deletedChar = currentGuess.characters[editableIndex].letter
+      const newCharacters = updateGuessCharacter(editableIndex, key)
       if (deletedChar !== ' ') {
-        keyboardRef.current?.enableKey(deletedChar.toUpperCase())
+        keyboardRef.current?.enableKey(deletedChar.toUpperCase(), newCharacters)
       }
-      updateGuessCharacter(editableIndex, key)
       setEditableIndex(nextEditableIndex())
     }
     return true
+  }
+
+  const updateGuessCharacter = (index: number, newLetter: string): Clue[] => {
+    let newCharacters: Clue[] = [...currentGuess.characters]
+    newCharacters[index] = { ...newCharacters[index], letter: newLetter }
+    const newGuess = { ...currentGuess, characters: newCharacters }
+    setCurrentGuess(newGuess)
+    return newCharacters
   }
 
   function shuffleArray(array) {
@@ -276,14 +331,6 @@ export function GameComponent() {
       }
     }
     return (editableIndex < chars.length - 1) ? editableIndex + 1 : editableIndex;
-  }
-
-  const updateGuessCharacter = (index: number, newLetter: string) => {
-    setCurrentGuess((prev) => {
-      const newCharacters = [...prev.characters]
-      newCharacters[index] = { ...newCharacters[index], letter: newLetter }
-      return { ...prev, characters: newCharacters }
-    })
   }
 
   const handleDrawerClose = () => {
@@ -482,7 +529,12 @@ export function GameComponent() {
       </Stack>
 
       <Drawer visible={drawerVisible} onClose={handleDrawerClose} />
-      <SummaryDrawer statistics={statistics || undefined} status={status || undefined} feedback={feedback} visible={summaryVisible} onClose={handleSummaryClose} />
+      <SummaryDrawer
+        statistics={statistics || undefined}
+        status={status || undefined}
+        feedback={feedback}
+        visible={summaryVisible}
+        onClose={handleSummaryClose} />
 
       {/* GuessRows in the middle and scrollable */}
       <ScrollView

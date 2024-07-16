@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 using Microsoft.OpenApi.Services;
 using Npgsql;
@@ -89,15 +90,12 @@ public class GameService
         int refCharIdx = (maxWordIndex == AnagramIndex) ? AnagramIndex : LastPlusOneIndex;
         List<char> gameChars = gameData.ReferenceWord(refCharIdx).ToList(); 
         string prevWord = (maxWordIndex == AnagramIndex) ? "" : gameData.ReferenceWord(maxWordIndex - 1);
-        gameChars.Sort((a, b) =>
-        {
-            bool aInRef = prevWord.Contains(a);
-            bool bInRef = prevWord.Contains(b);
-            if (aInRef && !bInRef) return -1;
-            if (!aInRef && bInRef) return 1;
-            return a.CompareTo(b);
-        });
-        status.Characters = gameChars;
+        List<char> group1 = prevWord.ToList();
+        Dictionary<char, int> prevCharCounts = prevWord.GroupBy(c => c).ToDictionary(g => g.Key, g => g.Count());
+        List<char> group2 = gameChars.Where(c => !prevCharCounts.ContainsKey(c) || prevCharCounts[c]-- <= 0).ToList();
+        group1.Sort();
+        group2.Sort();
+        status.Characters = group1.Concat(group2).ToList();
 
         if (status.State == GameState.Unsolved)
         {

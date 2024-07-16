@@ -3,6 +3,7 @@ import { Stack, XStack, YStack, Button, Text } from 'tamagui';
 import { tokens } from '@tamagui/config/v3';
 import { Variable } from '@my/ui';
 import LottieView from 'lottie-react-native';
+import { Clue } from '../types/'
 
 interface KeyboardProps {
   layout: string[][];
@@ -16,7 +17,7 @@ interface KeyStatus {
 }
 
 export interface KeyboardHandles {
-  enableKey: (keyLabel: string) => void;
+  enableKey: (keyLabel: string, newCharacters: Clue[]) => void;
 }
 
 const backspace = '\u232B'
@@ -44,7 +45,7 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
   }, [layout, refWord]);
 
   const handleKeyPress = (keyIdentifier: string, label: string) => {
-    if (keyStates[keyIdentifier].active === false) { return; }
+    //if (keyStates[keyIdentifier].active === false) { return; }
     if (!keyIdentifier.startsWith(`key${backspace}`)) {
       let states = {...keyStates};
       states[keyIdentifier].active = false;
@@ -53,11 +54,13 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
     onKeyPress(label);
   };
 
-  const enableKey = async (keyLabel: string) => {
-    const keyEntries: [string, KeyStatus][] = Object.entries(keyStates)
-    const keyEntry = keyEntries.find(([key, status]) => key.startsWith(`key${keyLabel}_`) && !status.active);
-    if (keyEntry) {
-      const keyIdentifier = keyEntry[0];
+  const enableKey = async (keyLabel: string, newCharacters: Clue[]) => {
+    const keyEntries: [string, KeyStatus][] = Object.entries(keyStates);
+    const matchingKeys = keyEntries.filter(([key, status]) => key.startsWith(`key${keyLabel}_`) && !status.active);
+    const matchingChars = newCharacters.filter((clue) => clue.letter.toUpperCase() === keyLabel);
+    if (matchingKeys.length > 1 || (matchingKeys.length == 1 && matchingChars.length === 0)) {
+      const lastKey = matchingKeys.splice(-1, 1)[0];
+      const keyIdentifier = lastKey[0];
       let states = {...keyStates};
       states[keyIdentifier].active = true;
       setKeyStates(states);
@@ -70,7 +73,7 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
 
   const buttonContents = (keyIdentifier: string, letter: string, rowIndex: number, buttonWidth: number) => {
     const status: KeyStatus = keyStates[keyIdentifier];
-    if (keyStates[keyIdentifier].active || !keyIdentifier.startsWith("keyENTER")) {
+    if (status.active || !keyIdentifier.startsWith("keyENTER")) {
       return (
         <>
           { !status.highlighted && rowIndex === 0 && status.active &&
