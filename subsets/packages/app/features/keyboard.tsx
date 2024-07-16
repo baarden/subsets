@@ -48,6 +48,13 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
     //if (keyStates[keyIdentifier].active === false) { return; }
     if (!keyIdentifier.startsWith(`key${backspace}`)) {
       let states = {...keyStates};
+      if (states[keyIdentifier].active === false) {
+        const entries: [string, KeyStatus][] = Object.entries(states);
+        const key = entries.find(([k, v]) => k.startsWith(`key${label}_`) && v.active === true);
+        if (key !== undefined) {
+          keyIdentifier = key[0];
+        }
+      }
       states[keyIdentifier].active = false;
       setKeyStates(states);
     }

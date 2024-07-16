@@ -164,63 +164,67 @@ export function GameComponent() {
     let firstRow = keyArr.map(c => c.toUpperCase());
     const secondRow = [backspace, shuffle, 'ENTER'];
 
+    // firstRow -> { key: string, status: number, plusone: boolean }
+    // Loop over guesses for the current wordIndex
+    //   For any good clue
+    //   - set an unmarked char to safe. If none, set a deleted char to safe.
+    //   - if that char is plus-one, set goodPlusOne to true
+    //   For any incorrect clue, set an unmarked char as deleted
+    //   If all clues are good, mark any unmarked chars as deleted
+    //   If goodPlusOne is true, mark any unmarked plus-one as deleted
+    //   Merge with master: safe > deleted > unmarked
+    // Apply any master deletions to firstRow
     const goodTypes = [ClueType.AllCorrect, ClueType.CorrectLetter];
+    let states = firstRow.map(c => { return {key: c, state: 0, plusone: true}; });
+    refWord.toUpperCase().split('').forEach(c => {
+      const idx = states.findIndex(s => s.key === c && s.plusone === true);
+      states[idx].plusone = false;
+    });
+    const stateRef = structuredClone(states);
     guesses.forEach((guess) => {
       if (guess.wordIndex !== wordIndex) { return; }
-
       const chars = guess.characters;
-
-      // Check for any good guess characters that were not in the previous word
-      // If found, remove any other characters in firstRow that were not in the previous word
-      let plusChars: string[] = [...firstRow]
-      let plusOneChar = "";
-      let refChars: string[] = refWord.split('');
+      let localStates = structuredClone(stateRef);
+      let goodCount = 0;
+      let goodPlusOne = false;
       chars.forEach(c => {
-        if (!goodTypes.includes(c.clueType)) {return;}
         const upperC = c.letter.toUpperCase();
-        const plusIdx = plusChars.findIndex(p => p === upperC);
-        plusChars.splice(plusIdx, 1);
-        const refCharsIdx = refChars.indexOf(c.letter)
-        if (refCharsIdx === -1) {
-          plusOneChar = upperC;
-        } else {
-          refChars.splice(refCharsIdx, 1);
-        }
-      });
-      if (plusOneChar) {
-        plusChars.forEach((c) => {
-          const refCharsIdx = refChars.findIndex(r => r.toUpperCase() === c);
-          if (refCharsIdx >= 0) {
-            refChars.splice(refCharsIdx, 1);
-            return;
+        if (goodTypes.includes(c.clueType)) {
+          let idx = localStates.findIndex(s => s.key === upperC && s.state === 0);
+          if (idx === -1) {
+            idx = localStates.findIndex(s => s.key === upperC && s.state === -1)
           }
-          if (c === plusOneChar) {
-            plusOneChar = "";
-            return;
+          localStates[idx].state = 1;
+          if (localStates[idx].plusone) {
+            goodPlusOne = true;
           }
-          const rowIdx = firstRow.indexOf(c);
-          firstRow.splice(rowIdx, 1);
-        });
-      }
-
-      const badChars = chars.filter(c => c.clueType == ClueType.Incorrect).map(c => c.letter.toUpperCase());
-      badChars.forEach(c => {
-        const badIdx = firstRow.indexOf(c);
-        firstRow.splice(badIdx, 1);
-      });
-
-      const goodChars = chars.filter(c => goodTypes.includes(c.clueType)).map(c => c.letter.toUpperCase());
-      if (goodChars.length === wordIndex + 3) {
-        for (let i = firstRow.length - 1; i >= 0; i--) {
-          const goodIdx = goodChars.indexOf(firstRow[i]);
-          if (goodIdx === -1) {
-            firstRow.splice(i, 1);
-          } else {
-            goodChars.splice(goodIdx, 1);
+          goodCount++;
+        } else if (c.clueType === ClueType.Incorrect) {
+          const idx = localStates.findIndex(s => s.key === upperC && s.state === 0);
+          if (idx >= 0) {
+            localStates[idx].state = -1;
           }
         }
+      });
+      for (let i = 0; i < states.length; i++) {
+        const ls = localStates[i];
+        const s = states[i];
+        if (ls.state === 0 && goodCount === guess.length) {
+          localStates[i].state = -1;
+        }
+        if (ls.plusone && goodPlusOne && ls.state !== 1) {
+          localStates[i].state = -1;
+        }
+        const newState = (ls.state === 1 || s.state === 1) ? 1 : (ls.state === -1 || s.state === -1) ? -1 : 0; 
+        s.state = newState;
       }
     });
+    for (let i = states.length - 1; i >= 0; i--) {
+      const s = states[i];
+      if (s.state === -1) {
+        firstRow.splice(i, 1);
+      }
+    }
 
     return [firstRow, secondRow];
   }  
