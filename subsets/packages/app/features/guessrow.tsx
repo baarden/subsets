@@ -39,7 +39,11 @@ const GuessRow: React.FC<GuessRowProps> = ({
   if (extraLetter) {
     offset = 1
   } else if (isAnagramGuess) {
-    offset = guess.characters.findIndex(c => c.letter === guess.highlightLetter) + 1
+    if (guess.state === GuessState.Solved) {
+      offset = guess.characters.findIndex(c => c.letter === guess.highlightLetter) + 1
+    } else {
+      offset = guess.length / 2
+    }
   }
   const leftPad = parentWidth / 2 - offset * squareDim / 2;
   let hLetter : string = guess.highlightLetter;

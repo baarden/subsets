@@ -8,6 +8,7 @@ public record GuessData(string GuessText, int ReferenceWordIndex, int GuessNumbe
 public class GuessPayload
 {
     public required string Guess { get; set; }
+    public required DateOnly Date { get; set; }
 }
 
 public class Status
@@ -31,6 +32,7 @@ public class Guess
     public int Offset { get; set; }
     public string HighlightLetter { get; set; } = "";
     public GuessState State { get; set; }
+    public DateOnly Date { get; set; }
 }
 
 public class Clue
@@ -44,4 +46,9 @@ public class Statistics
     public int Played { get; set; }
     public int Solved { get; set; }
     public int Streak { get; set; }
+}
+
+public class GuessResponse
+{
+    public DateOnly Date { get; set; }
 }

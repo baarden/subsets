@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
 using SubsetsAPI;
 using SubsetsAPI.Models.Configuration;
+using SubsetsAPI.Helpers;
 using Microsoft.AspNetCore.HttpLogging;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,7 +16,10 @@ builder.Logging.AddConsole();
 var services = builder.Services;
 
 services.AddHttpLogging(o => { });
-services.AddControllers();
+services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new DateOnlyJsonConverter());
+});
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
 services.AddSingleton<GameService>(new GameService(connectionString));
 

@@ -9,6 +9,7 @@ const blueSquare = "\ud83d\udfe6";
 const redSquare = "\ud83d\udfe5";
 const whiteSquare = "\u2b1c";
 const blackSquare = "\u2b1b";
+const startWordIndex = 0;
 const extraLetterIndex = 6;
 
 
@@ -43,12 +44,13 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
 
     const shareStatus = () => {
         if (!status) { return }
-        let share: string[] = [`Plus One in ${status.guesses.length - 1}!`];
+        let share: string[] = [`Plus One in ${status.guesses.length - 2}!`];
         const guesses = [...status.guesses].sort((a, b) => a.key - b.key)
         guesses.forEach((value: Guess, index: number) => {
-            if (value.wordIndex === extraLetterIndex) { return; }
+            const wordIdx = value.wordIndex;
+            if (wordIdx === startWordIndex || wordIdx === extraLetterIndex) { return; }
             let row: string = "";
-            const indent:number = 3 - Math.ceil(value.wordIndex / 2);
+            const indent = (wordIdx === 7) ? 1 : 3 - Math.ceil(wordIdx / 2);
             for (let i:number = 0; i < indent; i++) {
                 row += whiteSquare;
             }
@@ -65,7 +67,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
                         row += blackSquare;
                 }
             })
-            for (let i:number = indent + value.length; i < 8; i++) {
+            for (let i:number = indent + value.characters.length; i < 8; i++) {
                 row += whiteSquare;
             }
             share.push(row);
@@ -121,7 +123,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
                 <YStack padding={16}>
 
                     <DefaultText fontSize={16} fontWeight={800} marginVertical={16}>
-                        You solved it in {status?.guesses.length - 1}! {feedback}
+                        You solved it in {status?.guesses.length - 2}! {feedback}
                     </DefaultText>
 
                     <Stack alignItems='center' width="100%">

@@ -44,9 +44,8 @@ public class GameService
         return userId;
     }
 
-    public (Status, string?) GetStatus(int userId)
+    public (Status, string?) GetStatus(int userId, DateOnly today)
     {
-        DateOnly today = GetDate();
         var status = new Status
         {
             Today = today
@@ -104,7 +103,8 @@ public class GameService
         } else {
             int[] newOrder = gameData.AnagramSortOrder();
             List<Guess> guesses = newOrder.SelectMany(i => status.Guesses.Where(g => g.WordIndex == i)).ToList();
-            status.Guesses = guesses;
+            var anagramGuesses = status.Guesses.Where(g => g.WordIndex == AnagramIndex).ToList();
+            status.Guesses = guesses.Concat(anagramGuesses).ToList();
         }
  
         status.Indent = 0;
@@ -112,10 +112,8 @@ public class GameService
         return (status, refWord);
     }
 
-    public Statistics GetStatistics(int userId)
+    public Statistics GetStatistics(int userId, DateOnly today)
     {
-        DateOnly today = GetDate();
-
         using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
 
@@ -168,12 +166,6 @@ public class GameService
         }
 
         throw new Exception("Unable to read statistics!");
-    }
-
-    private static DateOnly GetDate()
-    {
-        DateTime now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time"));
-        return DateOnly.FromDateTime(now);
     }
 
     private static void AddStartingGuess(Status status, GameDayDataProvider gameData)

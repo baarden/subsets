@@ -28,9 +28,11 @@ public partial class ApiController : ControllerBase
         int? userId = GetUser();
         if (userId == null) { return Unauthorized("User not found."); }
 
+        DateOnly today = GetDate();
+
         Status status;
         try {
-            (status, _) = _gameService.GetStatus((int)userId);
+            (status, _) = _gameService.GetStatus((int)userId, today);
             return Ok(status);
         } catch (Exception e) {
             return BadRequest(e.Message);
@@ -43,9 +45,11 @@ public partial class ApiController : ControllerBase
         int? userId = GetUser();
         if (userId == null) { return Unauthorized("User not found."); }
 
+        DateOnly today = GetDate();
+
         Statistics stats;
         try {
-            stats = _gameService.GetStatistics((int)userId);
+            stats = _gameService.GetStatistics((int)userId, today);
             return Ok(stats);
         } catch (Exception e) {
             return BadRequest(e.Message);
@@ -53,12 +57,18 @@ public partial class ApiController : ControllerBase
     }
 
     [HttpPost("guess")]
-    public ActionResult PostGuess([FromBody] GuessPayload payload)
+    public ActionResult<GuessResponse> PostGuess([FromBody] GuessPayload payload)
     {
         if (payload == null || string.IsNullOrWhiteSpace(payload.Guess))
         {
             return UnprocessableEntity("Empty guess submitted.");
         }
+
+        DateOnly today = GetDate();
+        if (payload.Date.CompareTo(today) != 0) {
+            return Conflict("Date mismatch");
+        }
+
         string guess = payload.Guess.ToLower(CultureInfo.InvariantCulture);
 
         int? userId = GetUser();
@@ -66,7 +76,7 @@ public partial class ApiController : ControllerBase
 
         Status status;
         string? refWord;
-        (status, refWord) = _gameService.GetStatus((int)userId);
+        (status, refWord) = _gameService.GetStatus((int)userId, today);
         if (status == null) { return StatusCode(500, "Unable to retrieve status."); }
         if (status.NextGuess == null || refWord == null || guess.Length != refWord.Length || !GuessRegex().IsMatch(guess))
         {
@@ -83,7 +93,7 @@ public partial class ApiController : ControllerBase
 
         int guessNumber = status.Guesses.Count + 1;
 
-        bool inserted = _gameService.AddGuess((int)userId, status.Today, guessNumber, status.NextGuess.WordIndex, guess, out string errorMessage);
+        bool inserted = _gameService.AddGuess((int)userId, today, guessNumber, status.NextGuess.WordIndex, guess, out string errorMessage);
         if (!inserted)
         {
             if (errorMessage != null) { return BadRequest(errorMessage); }
@@ -104,5 +114,14 @@ public partial class ApiController : ControllerBase
 
         int? userId = _gameService.GetUser(sessionId);
         return userId;
-    }    
+    }
+
+    private static DateOnly GetDate()
+    {
+        DateTime now = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.UtcNow,
+            TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time")
+            );
+        return DateOnly.FromDateTime(now);
+    }
 }

@@ -41,7 +41,7 @@ const Square: React.FC<SquareProps> = ({
   const getBackgroundColor = (): Variable => {
     switch (clueType) {
       case ClueType.AllCorrect:
-        return (normalWidth) ? customTokens.color.blue7Light : customTokens.color.blue5Light
+        return (isHighlighted) ? customTokens.color.blue7Light : customTokens.color.blue5Light
       case ClueType.CorrectLetter:
         return customTokens.color.orange8Light
       case ClueType.Incorrect:
@@ -78,19 +78,6 @@ const Square: React.FC<SquareProps> = ({
       display="flex"
       onPress={onPress}
     >
-      { isHighlighted &&
-        <LottieView
-          source={require("../assets/shimmer.json")}
-          autoPlay
-          width={squareWidth}
-          height={squareHeight}
-          loop
-          speed={1.0 + 0.5 * (Math.random() - 0.5)}
-          position='absolute'
-          top={0}
-          left={0}
-        />
-      }
       <Text position='absolute' zIndex={5} color={'black'} fontSize={18} fontWeight={normalWidth ? "bold" : "unset"}>
         {letter.toUpperCase()}</Text>
     </Stack>

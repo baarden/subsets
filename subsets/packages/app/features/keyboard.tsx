@@ -84,19 +84,17 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
       return (
         <>
           { !status.highlighted && rowIndex === 0 && status.active &&
-            <LottieView
-              source={require("../assets/shimmer.json")}
-              autoPlay
-              width={buttonWidth}
-              height={buttonHeight}
-              loop
-              speed={1.0 + 0.5 * (Math.random() - 0.5)}
+            <Text
+              fontWeight={900}
+              fontSize={18}
               position='absolute'
-              top={0}
-              left={0}
-            />
+              top={-1}
+              color="$blue7Light"
+            >
+              +
+            </Text>
           }
-          <Text color='black' style={{ fontSize: letter === 'ENTER' ? 12 : 16 }} position='absolute'>
+          <Text color='black' style={{ fontSize: letter === 'ENTER' ? 12 : 16 }} position='absolute' paddingTop={5}>
             {letter}
           </Text>
         </>

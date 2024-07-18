@@ -40,6 +40,7 @@ export interface Status {
   characters: string[];
   state: GameState;   // Current state of the game (solved/unsolved)
   indent: number;
+  today: string;
 }
 
 export interface Statistics {

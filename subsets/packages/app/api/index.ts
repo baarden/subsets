@@ -3,6 +3,13 @@ import { Status, ClueType, Clue, Guess, GuessState, emptyGuess, Statistics } fro
 const API_BASE_URL = (process.env.NODE_ENV === 'development') ? 
   'http://localhost:8080/api' : 'https://plusone.ngrok.app/api';
 
+export class ConflictError extends Error {
+  constructor(message: string) {
+      super(message);
+      this.name = "ConflictError";
+  }
+}
+
 export const fetchStatus = async (): Promise<Status> => {
   var data: Status
   try {
@@ -69,16 +76,17 @@ export const fetchStatus = async (): Promise<Status> => {
     nextGuess: nextGuess,
     state: data.state,
     indent: data.indent,
+    today: data.today
   };
 }
 
-export const submitGuess = async (guess: string): Promise<void> => {
+export const submitGuess = async (guess: string, today: string): Promise<void> => {
   const response = await fetch(`${API_BASE_URL}/guess`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ Guess: guess }),
+    body: JSON.stringify({ Guess: guess, Date: today }),
   })
 
   if (response.ok) {
@@ -87,6 +95,8 @@ export const submitGuess = async (guess: string): Promise<void> => {
   var errorText = await response.text()
   if (response.status === 400) {
     throw new Error(errorText)
+  } if (response.status === 409) {
+    throw new ConflictError(errorText)
   } else {
     throw new Error(`Error: ${response.status}`)
   }

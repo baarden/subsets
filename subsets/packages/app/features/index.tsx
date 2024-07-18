@@ -7,7 +7,7 @@ import GuessRow from './guessrow'
 import Keyboard, { KeyboardHandles } from './keyboard'
 import Drawer from './drawer'
 import SummaryDrawer from './summary'
-import { fetchStatus, submitGuess, fetchStats } from '../api'
+import { fetchStatus, submitGuess, fetchStats, ConflictError } from '../api'
 import { Dimension, useResponsiveDimensions } from '../hooks/useResponsiveDimensions'
 import { GuessState, Status, Guess, GameState, emptyGuess, Clue, ClueType, Statistics } from '../types/'
 
@@ -86,7 +86,8 @@ export function GameComponent() {
     const prevGuess = statusData.guesses.slice(-1)[0]
     var nextGuess = statusData.nextGuess
     setCurrentGuess(nextGuess)
-    const guesses = statusData.guesses.length - 1
+    const extraGuesses = (statusData.state === GameState.Solved || statusData.nextGuess.wordIndex === anagramGuess) ? 2 : 1;
+    const guesses = statusData.guesses.length - extraGuesses
     setGuessCount(guesses)
     if (statusData.state == GameState.Solved) {
       displaySummary(guesses)
@@ -164,9 +165,17 @@ export function GameComponent() {
     let firstRow = keyArr.map(c => c.toUpperCase());
     const secondRow = [backspace, shuffle, 'ENTER'];
 
+    if (wordIndex < anagramGuess) {
+      firstRow = removeKeysFromClues(firstRow, wordIndex, refWord, guesses);
+    }
+
+    return [firstRow, secondRow];
+  }
+
+  const removeKeysFromClues = (firstRow: string[], wordIndex: number, refWord: string, guesses: Guess[]): string[] => {
     // firstRow -> { key: string, status: number, plusone: boolean }
     // Loop over guesses for the current wordIndex
-    //   For any good clue
+    //   For any good clue:
     //   - set an unmarked char to safe. If none, set a deleted char to safe.
     //   - if that char is plus-one, set goodPlusOne to true
     //   For any incorrect clue, set an unmarked char as deleted
@@ -225,21 +234,26 @@ export function GameComponent() {
         firstRow.splice(i, 1);
       }
     }
-
-    return [firstRow, secondRow];
+    return firstRow;
   }  
+
 
   const handleKeyPress = async (key: string): Promise<boolean> => {
     if (status === null) return false
     if (key === 'ENTER') {
       if (currentGuessLength() >= 4) {
         try {
-          await submitGuess(currentGuess.characters.map((clue) => clue.letter).join(''))
+          await submitGuess(currentGuess.characters.map((clue) => clue.letter).join(''), status.today)
           const statusData = await fetchStatus()
           updateStatus(statusData)
         } catch (err) {
-          setError(err.message)
-          setTimeout(() => setError(''), 3000)
+          if (err instanceof ConflictError) {
+            const statusData = await fetchStatus()
+            updateStatus(statusData)
+          } else {
+            setError(err.message)
+            setTimeout(() => setError(''), 3000)
+          }
         }
       } else {
         setError('Incomplete guess')
@@ -444,11 +458,14 @@ export function GameComponent() {
             hasHiddenRows = true;
           }
   
-          const isVisible =
+          let isVisible =
             showRows ||
             visibleWordIndices.has(guess.wordIndex) ||
             guess.wordIndex === status.nextGuess.wordIndex ||
             guess.state === GuessState.Solved;
+          if (status.state === GameState.Solved && guess.wordIndex === anagramGuess) {
+            isVisible = false;
+          }
           if (!isVisible) {
             return null;
           }

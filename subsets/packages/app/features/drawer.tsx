@@ -104,6 +104,10 @@ const Drawer = ({ visible, onClose }) => {
                 <Image src="/anagram.png" alt="Example" width={304} height={358} marginTop={8}/>
               </YStack>
 
+              <DefaultText marginTop={8}>
+                A new puzzle is published every day at midnight US Eastern time.
+              </DefaultText>
+
               <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginVertical={16}>SCORING</DefaultText>
               <DefaultText><DefaultText fontWeight="bold">5-10 guesses:</DefaultText> Excellent!</DefaultText>
               <DefaultText><DefaultText fontWeight="bold">11-12 guesses:</DefaultText> Great!</DefaultText>
