@@ -10,7 +10,7 @@ public class DateOnlyJsonConverter : JsonConverter<DateOnly>
     public override DateOnly Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var value = reader.GetString();
-        return DateOnly.ParseExact(value, Format);
+        return value == null ? throw new Exception() : DateOnly.ParseExact(value, Format);
     }
 
     public override void Write(Utf8JsonWriter writer, DateOnly value, JsonSerializerOptions options)
