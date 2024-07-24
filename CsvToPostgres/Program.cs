@@ -12,16 +12,11 @@ using Npgsql;
 
 namespace CsvToPostgres;
 
-/*
-TODO:
-Remove sets with adjacent words that end with 's', or final words that end with 's'.
-*/
-
 class Program
 {
     static void Main(string[] args)
     {
-        string connectionString = "Host=localhost;Username=admin;Password=T9Bt4M7tSB!r;Database=subsets2";
+        string connectionString = "Host=localhost;Username=admin;Password=T9Bt4M7tSB!r;Database=plusone";
 
         RunMigrations(connectionString);
     }

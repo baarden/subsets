@@ -1,5 +1,10 @@
 
-create index ix_subsets_batchpool on subsets (batchpool);
-create index ix_subsets_wordids on subsets USING GIN (wordids);
-create index ix_subsets_anagram on subsets (anagram);
-create index ix_subsets_playdate on subsets (playdate);
+create index ix_plusone_batchpool on plusone (batchpool);
+create index ix_plusone_wordids on plusone USING GIN (wordids);
+create index ix_plusone_anagram on plusone (anagram);
+create index ix_plusone_playdate on plusone (playdate);
+
+create index ix_plusonemore_batchpool on plusonemore (batchpool);
+create index ix_plusonemore_wordids on plusonemore USING GIN (wordids);
+create index ix_plusonemore_anagram on plusonemore (anagram);
+create index ix_plusonemore_playdate on plusonemore (playdate);

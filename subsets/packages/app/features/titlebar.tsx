@@ -36,7 +36,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ guessCount, onInfoPress }) => {
                 </Text>
 
             </YStack>
-            <Button icon={Info} theme="light" onPress={onInfoPress} position="absolute" right={0} />
+            <Button icon={Info} theme="light" onPress={onInfoPress} position="absolute" right={10} size={48} />
         </XStack>
     );
 };

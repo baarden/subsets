@@ -35,7 +35,7 @@ const Drawer = ({ visible, onClose }) => {
         padding={16}
       >
         <XStack justifyContent="flex-end">
-          <Text fontSize={18} fontWeight="bold" flex={5}>How To Play Plus One</Text>
+          <Text fontSize={18} fontWeight="bold" flex={5}>How to play Plus One</Text>
           <Button size="$2" icon={XCircle} theme="light" onPress={onClose} flex={1} />
         </XStack>
         <ScrollView>
@@ -43,24 +43,29 @@ const Drawer = ({ visible, onClose }) => {
               <XStack width="100%" backgroundColor="$blue3Light">
                 <Stack width={20}><ChevronRight width={15}/></Stack>
                 <DefaultText fontWeight="bold" marginTop={4}>
-                  Guess the next 5 words by adding 1 letter at each step.
+                  Find all the words in as few guesses as you can.
+                </DefaultText>
+              </XStack>
+              <XStack width="100%" backgroundColor="$blue3Light">
+                <Stack width={20}><ChevronRight width={15}/></Stack>
+                <DefaultText fontWeight="bold" marginTop={4}>
+                  The next word has all of the same letters — plus one!
                 </DefaultText>
               </XStack>
               <DefaultText marginTop={8}>
-                For example, if the starting word is "MET", the answers might look like this:
+                If the starting word is "MET", the answers could look like this:
               </DefaultText>
               <YStack alignItems="center" width="100%">
                 <Image src="/full_example.png" alt="Full example" width={292} height={218} marginVertical={8}/>
               </YStack>
               <DefaultText>
-                The "plus one" letter is highlighted in each row.
+                The plus-one letter is highlighted in each row.
               </DefaultText>
 
               <XStack backgroundColor="$blue3Light" marginTop={8}>
                 <Stack width={20}><ChevronRight width={15}/></Stack>
                 <DefaultText fontWeight="bold" marginTop={4}>
-                  The correct guess will fill all the squares.
-                  But you can use shorter guesses to gather clues.
+                  Need a hint? Enter shorter guesses to gather clues!
                 </DefaultText>
               </XStack>
               <XStack backgroundColor="$blue3Light">
@@ -72,13 +77,13 @@ const Drawer = ({ visible, onClose }) => {
               <XStack backgroundColor="$blue3Light">
                 <Stack width={20}><ChevronRight width={15}/></Stack>
                 <DefaultText fontWeight="bold" marginTop={4}>
-                  The color of the square shows how close your guess was to the correct answer.
+                  After entering your guess, the color of the square
+                  shows how close you were to the correct answer.
                 </DefaultText>
               </XStack>
 
               <DefaultText marginTop={8}>
-                For example, if you couldn't think of a 5-letter word for the above puzzle,
-                you could guess "MANY" to get some clues:
+                For the third word, you could guess "MANY" to get clues:
               </DefaultText>
               <YStack alignItems="center" width="100%">
                 <Image src="/example.png" alt="Example" width={205} height={42} marginVertical={8}/>
@@ -92,20 +97,25 @@ const Drawer = ({ visible, onClose }) => {
               <XStack backgroundColor="$blue3Light" marginTop={8}>
                 <Stack width={20}><ChevronRight width={15}/></Stack>
                 <DefaultText fontWeight="bold" marginTop={4}>
-                  Once you have all 6 words, a final "plus one" letter is revealed.
-                  Use all the "plus one" letters and the provided clue to solve the puzzle.
+                  When you have all the words, a final plus-one letter is revealed.
+                </DefaultText>
+              </XStack>
+              <XStack backgroundColor="$blue3Light">
+                <Stack width={20}><ChevronRight width={15}/></Stack>
+                <DefaultText fontWeight="bold" marginTop={4}>
+                  Use all the plus-one letters and the provided clue to solve the puzzle!
                 </DefaultText>
               </XStack>
 
               <DefaultText marginTop={8}>
-                For example, given the clue below you might guess "CYANIDE":
+                With the clue below you might guess "CYANIDE":
               </DefaultText>
               <YStack alignItems="center" width="100%">
                 <Image src="/anagram.png" alt="Example" width={304} height={358} marginTop={8}/>
               </YStack>
 
               <DefaultText marginTop={8}>
-                A new puzzle is published every day at midnight US Eastern time.
+                A new puzzle is published every day at midnight US Eastern time!
               </DefaultText>
 
               <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginVertical={16}>SCORING</DefaultText>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using Npgsql;
 
@@ -19,15 +20,13 @@ where s.id = p.id
 ;
 */
 
-/*
-TODO:
-Auto-delete sets with no anagram
-*/
-
 class Program
 {
-    private static string connectionString = "Host=localhost;Username=admin;Password=T9Bt4M7tSB!r;Database=subsets2";
-    private static int _batch = 2;
+    private static readonly string connectionString = "Host=localhost;Username=admin;Password=T9Bt4M7tSB!r;Database=plusone";
+    private static readonly int _batch = 1;
+    private static readonly string SetTable = "plusone";
+    private static readonly string NonWordTable = "nonwordplusone";
+    internal static readonly char[] separator = [' '];
 
     static void Main()
     {
@@ -36,13 +35,12 @@ class Program
 
         while (true)
         {
-            var (index, words) = GetBestSubsets(conn);            
+            var (index, words, anagram, anagramSourceChars) = GetValidSet(conn);            
             if (words == null)
             {
-                Console.WriteLine("No subset available.");
-                continue;
+                Console.WriteLine("No set available.");
+                break;
             }
-            var (anagram, anagramSourceChars) = GetAnagram(index, conn);
             string? clue = GetAnagramClue(anagram, conn);
 
             DisplayWords(index, words, anagram, clue);
@@ -61,6 +59,7 @@ class Program
                     break;
                 case 4:
                     DeleteSubset(index, conn);
+                    Console.WriteLine("Set deleted.");
                     break;
                 case 5:
                     clue = GetAlternateClue();
@@ -73,14 +72,37 @@ class Program
         }
     }
 
+    private static (int, string[]?, string?, string[]?) GetValidSet(NpgsqlConnection conn)
+    {
+        int deletedSets = 0;
+        while (true)
+        {
+            (int index, string[]? words) = GetBestSubsets(conn);
+            if (words == null) { return (0, null, null, null); }
+
+            (string? anagram, string[]? anagramSourceChars) = GetAnagram(index, conn);
+            if (anagram == null) {
+                deletedSets++;
+                DeleteSubset(index, conn);
+                continue;
+            }
+            if (deletedSets > 0) {
+                Console.WriteLine($"Deleted {deletedSets} sets without anagrams.");
+            }
+            return (index, words, anagram, anagramSourceChars);
+        }
+    }
+
     private static (int, string[]?) GetBestSubsets(NpgsqlConnection conn)
     {
-        const double targetRanking = 97.0;  // The median of a complete run of subsets
+        const double targetRanking = 83.0;  // The median of a complete run of subsets [plusone]
+        // const double targetRanking = 97.0;  // The median of a complete run of subsets [plusonemore]
 
-        var query = @"
+        var query = @$"
             SELECT id, words
-            FROM subsets2
+            FROM {SetTable}
             WHERE batchPool = @batch
+                and deleted = false
             ORDER BY ABS(ranking - @targetRanking)
             LIMIT 1";
         using var cmd = new NpgsqlCommand(query, conn);
@@ -110,10 +132,10 @@ class Program
     private static int GetUserOption()
     {
         Console.WriteLine("Choose an option:");
-        Console.WriteLine("1 - Accept subset");
+        Console.WriteLine("1 - Accept set");
         Console.WriteLine("2 - Delete word");
         Console.WriteLine("3 - Delete word pair");
-        Console.WriteLine("4 - Delete subset");
+        Console.WriteLine("4 - Delete set");
         Console.WriteLine("5 - Alternate clue");
         return int.TryParse(Console.ReadLine(), out int option) ? option : 0;
     }
@@ -136,7 +158,7 @@ class Program
         NpgsqlConnection conn)
     {
         if (anagram == null || anagramSourceChars == null || clue == null) {
-            Console.WriteLine("Cannot accept a subset with no anagram or clue");
+            Console.WriteLine("Cannot accept a set with no anagram or clue");
             return;
         }
 
@@ -151,7 +173,7 @@ class Program
         catch (Exception ex)
         {
             transaction.Rollback();
-            Console.WriteLine("An error occurred: " + ex.Message);
+            Console.WriteLine("An error occurred: " + ex.ToString());
         }
     }
 
@@ -162,8 +184,8 @@ class Program
         string clue,
         NpgsqlConnection conn)
     {
-        var queryUpdate = @"
-            update subsets2 d
+        var queryUpdate = @$"
+            update {SetTable} d
             set batch = @batch,
                 batchPool = null,
                 anagram = @anagram,
@@ -179,49 +201,54 @@ class Program
         cmdUpdate.Parameters.AddWithValue("@sourceChars", anagramSourceChars);
         cmdUpdate.Parameters.AddWithValue("@id", index);
         cmdUpdate.ExecuteNonQuery();
-        Console.WriteLine("Subset updated.");
+        Console.WriteLine("Set updated.");
     }
 
     private static void DeleteSubsetOverlaps(int index, NpgsqlConnection conn)
     {
-        var queryDeleteSubsetOverlaps = @"
+        var queryDeleteSubsetOverlaps = @$"
             with bestsubset as (
                 select id, bigrams
-                from subsets2
+                from {SetTable}
                 where id = @id
             ), deletions as (
-                select d.id cte_id
-                from subsets2 d
+                select d.id set_id
+                from {SetTable} d
                     cross join bestsubset bd
-                where d.id != bd.id and cardinality(d.bigrams & bd.bigrams) > 1
+                where d.id != bd.id
+                    and cardinality(d.bigrams & bd.bigrams) > 1
+                    and d.deleted = false
             )
-            delete from subsets2
-            where id in (select cte_id from deletions);
+            update {SetTable}
+            set deleted = true
+            where id in (select set_id from deletions)
+            ;
         ";
 
         using var cmdDeleteSubsets = new NpgsqlCommand(queryDeleteSubsetOverlaps, conn);
         cmdDeleteSubsets.Parameters.AddWithValue("@id", index);
         cmdDeleteSubsets.CommandTimeout = 120;
         cmdDeleteSubsets.ExecuteNonQuery();
-        Console.WriteLine("Subsets with 2+ bigram overlaps deleted.");
+        Console.WriteLine("Sets with 2+ bigram overlaps deleted.");
     }
 
     private static void MoveFirstLastOverlapsToNextBatch(int index, NpgsqlConnection conn)
     {
-        var queryMoveOverlaps = @"
+        var queryMoveOverlaps = @$"
             with bestsubsets as (
 	            select id, wordids
-	            from subsets2
+	            from {SetTable}
 	            where id = @id
             ), updates as (
 	            select d.id update_id
-	            from subsets2 d
+	            from {SetTable} d
 		            cross join bestsubsets bd
 	            where d.id != bd.id
 		            and d.batchPool = @batch
                     and cardinality(d.wordids & bd.wordids) > 0
+                    and deleted = false
             )
-            update subsets2
+            update {SetTable}
             set batchPool = (@batch + 1)
             where id in (select update_id from updates);
         ";
@@ -231,15 +258,15 @@ class Program
         cmdMoveOverlaps.Parameters.AddWithValue("@id", index);
         cmdMoveOverlaps.CommandTimeout = 120;
         cmdMoveOverlaps.ExecuteNonQuery();
-        Console.WriteLine("Subsets with word overlap moved to next batch.");
+        Console.WriteLine("Sets with word overlap moved to next batch.");
     }
 
     private static (string?, string[]?) GetAnagram(int index, NpgsqlConnection conn)
     {
-        var queryGetAnagram = @"
+        var queryGetAnagram = @$"
             with subsetWords as (
                 select s.id subsetId, s.words, w.widx, w.word
-                from subsets2 s
+                from {SetTable} s
                     cross join unnest(s.words) with ordinality w(word, widx)
                 where s.id = @sId
             ), trigrams as (
@@ -249,6 +276,8 @@ class Program
                     cross join unnest(w.Trigrams) t(trigram)
                 group by sw.subsetId, sw.words
             ), startWordChars as (
+                -- any one of the start word chars could be the plus one char
+                -- set them aside so we can decide later
                 select w.subsetId, c.idx, cast(c.chr as char) chr
                 from subsetWords w
                     cross join unnest(string_to_array(w.word, NULL)) with ordinality c(chr, idx)
@@ -270,14 +299,17 @@ class Program
                     from leadWords lw
                         cross join unnest(string_to_array(lw.leadWord, NULL)) with ordinality c(chr, cidx)
                     where lw.leadWord is not null
-            ), extras as (
+            ), plusones as (
+                -- for subsequent pairs of words, the plus one character 
+                -- will be the only one that occurs an odd number of times
                 select subsetId, widx, chr
                 from leadChars
                 group by subsetId, widx, chr
                 having count(*) % 2 = 1
             ), subsetChars as (
+                -- pair each startword char with its own set of plusone chars
                 select e.subsetid, widx, v.idx, e.chr
-                    from extras e
+                    from plusones e
                         cross join (values (1), (2), (3)) v(idx)
                 union all
                 select subsetId, 6, idx, chr
@@ -288,23 +320,49 @@ class Program
                     array_agg(chr order by widx) sourceChars
                 from subsetChars
                 group by subsetid, idx
-            )
-            select
-                w.word anagram,
-                array(
-                    select unnest(ss.sourceChars)
-                    union all
-                    (select unnest(w.chars) except select unnest(ss.sourceChars))
-                ) sourcechars
-            from subsetsSorted ss
-                join trigrams t on t.subsetid = ss.subsetid
-                join words w on ss.sorted = any(w.subsets)
-                    and not (t.aggTrigrams && w.trigrams)
-                    and w.synsets is not null
-                left join subsets2 s on s.anagram = w.word and s.batch = @batch
-            where s.anagram is null
-            order by coalesce(w.frequency, 0) desc, w.word
-            limit 1;
+            ), bestAnagram as (
+                -- find the most frequently used anagram word with no shared trigrams 
+                -- that has synonym data and hasn't been used yet
+	            select
+	                w.word anagram,
+	                ss.sourceChars,
+					string_to_array(w.word, NULL) anagramChars
+	            from subsetsSorted ss
+	                join trigrams t on t.subsetid = ss.subsetid
+	                join words w on ss.sorted = any(w.subsets)
+	                    and not (t.aggTrigrams && w.trigrams)
+	                    and w.synsets is not null
+	                left join {SetTable} s on s.anagram = w.word and s.batch = @batch
+	            where s.anagram is null
+	            order by coalesce(w.frequency, 0) desc, w.word
+	            limit 1
+			), anagramChars as (
+			    SELECT distinct unnest(ba.anagramChars) AS char, 
+					count(*) OVER (PARTITION BY unnest(ba.anagramChars)) AS charCount
+			    FROM bestAnagram ba
+			), sourceChars AS (
+			    SELECT distinct unnest(ba.sourceChars) AS char,
+					count(*) OVER (PARTITION BY unnest(ba.sourceChars)) AS charCount
+			    FROM bestAnagram ba
+			), charCounts AS (
+			    SELECT
+			        a.char,
+			        a.charCount,
+			        COALESCE(s.charCount, 0) AS sourceCharCount
+			    FROM anagramChars a
+			    	LEFT JOIN sourceChars s ON s.char = a.char
+			), finalPlusOne as (
+                -- find the one extra char in the anagram
+				SELECT char
+				FROM charCounts
+				WHERE charCount > sourceCharCount
+			)
+			select
+				ba.anagram,
+				ba.sourceChars || po.char sourceChars
+			from bestAnagram ba
+				cross join finalPlusOne po
+			;
         ";
 
         using var cmd = new NpgsqlCommand(queryGetAnagram, conn);
@@ -362,13 +420,14 @@ class Program
         using var transaction = conn.BeginTransaction();
         try
         {
-            using var cmdInsert = new NpgsqlCommand("INSERT INTO NonWords (nonword) VALUES (@word);", conn);
+            using var cmdInsert = new NpgsqlCommand($"INSERT INTO {NonWordTable} (nonword) VALUES (@word);", conn);
             cmdInsert.Parameters.AddWithValue("@word", wordToDelete);
             cmdInsert.ExecuteNonQuery();
 
-            var queryDeleteSubsets = @"
-                delete from subsets2 s
-                using words w
+            var queryDeleteSubsets = @$"
+                update {SetTable} s
+                set deleted = true
+                from words w
                 where w.word = @word
 	                and w.id = any(s.wordids);
              ";
@@ -378,7 +437,7 @@ class Program
             cmdDeleteSubsets.ExecuteNonQuery();
 
             transaction.Commit();
-            Console.WriteLine("Word and affected subsets deleted.");
+            Console.WriteLine("Word and affected sets deleted.");
         }
         catch (Exception ex)
         {
@@ -397,7 +456,7 @@ class Program
             return;
         }
 
-        string[] words = input.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        string[] words = input.Split(separator, StringSplitOptions.RemoveEmptyEntries);
         if (words.Length != 2)
         {
             Console.WriteLine("Please enter exactly two words separated by a space.");
@@ -407,9 +466,10 @@ class Program
         int? wordPairId = InsertBadWordPair(words, conn);
         if (wordPairId == null) { return; }
 
-        var queryDelete = @"
-            delete from subsets2 d
-            using badwordpairs bwp 
+        var queryDelete = @$"
+            update {SetTable} d
+            set deleted = true
+            from badwordpairs bwp 
             where bwp.id = @wordPairId
 	            and cardinality(d.wordids & bwp.wordPair) = 2
         ";
@@ -417,7 +477,7 @@ class Program
         using var cmdDelete = new NpgsqlCommand(queryDelete, conn);
         cmdDelete.Parameters.AddWithValue("@wordPairId", wordPairId);
         cmdDelete.ExecuteNonQuery();
-        Console.WriteLine("Deleted subsets containing word pair");
+        Console.WriteLine("Deleted sets containing word pair");
     }
 
     static int? InsertBadWordPair(string[] words, NpgsqlConnection conn)
@@ -450,9 +510,15 @@ class Program
 
     private static void DeleteSubset(int index, NpgsqlConnection conn)
     {
+        string query = @$"
+            update {SetTable}
+            set Deleted = true
+            where id=@id
+            ;
+        ";
         try
         {
-            using var cmd = new NpgsqlCommand("delete from subsets2 where id=@id;", conn);
+            using var cmd = new NpgsqlCommand(query, conn);
             cmd.Parameters.AddWithValue("@id", index);
             cmd.ExecuteNonQuery();
         }
@@ -460,6 +526,5 @@ class Program
         {
             Console.WriteLine("An error occurred: " + ex.Message);
         }
-        Console.WriteLine("Subset deleted.");
     }
 }

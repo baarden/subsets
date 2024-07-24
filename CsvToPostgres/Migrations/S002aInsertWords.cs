@@ -7,11 +7,14 @@ using System.IO;
 using Npgsql;
 using CsvHelper;
 using CsvHelper.Configuration;
+using System.Text.Json.Serialization.Metadata;
 
 namespace CsvToPostgres.Migrations;
 
 public partial class S002aInsertWords : IScript
 {
+    readonly int MinWordLength = 2;
+    readonly int MaxWordLength = 8;
     public string ProvideScript(Func<IDbCommand> dbCommandFactory)
     {
         Console.WriteLine("Location of dictionary file:");
@@ -40,7 +43,7 @@ public partial class S002aInsertWords : IScript
             var word = csv.GetField<string>("word");
             int length = word.Length;
 
-            if (length > 8 || length < 3) { continue; }
+            if (length > MaxWordLength || length < MinWordLength) { continue; }
 
             records.Add(new WordRecord(
                 Word: word,

@@ -40,6 +40,7 @@ export function GameComponent() {
   const [currentGuess, setCurrentGuess] = useState<Guess>(emptyGuess)
   const [error, setError] = useState<string>('')
   const [guessCount, setGuessCount] = useState<number>(0)
+  const [swapState, setSwapState] = useState<boolean>(false)
 
   const keyboardRef = useRef<KeyboardHandles>(null);  
   const scrollViewRef = useRef<RNScrollVIew>(null);
@@ -47,10 +48,7 @@ export function GameComponent() {
   const showRows = true, hideRows = false;
   const orderByKey = true, orderByPosition = false;
   const editable = true, notEditable = false;
-
-  const handleSquareSelected = (index: number) => {
-    setEditableIndex(index)
-  }
+  const notSwapState = false;
 
   useEffect(() => {
     const hasVisited = localStorage.getItem('hasVisited');
@@ -237,9 +235,29 @@ export function GameComponent() {
     return firstRow;
   }  
 
+  const handleSquareSelected = (index: number) => {
+    if (index === editableIndex) {
+      setSwapState(!swapState)
+      return
+    }
+    if (swapState) {
+      let chars = structuredClone(currentGuess.characters)
+      const originalIndexLetter = chars[index].letter
+      chars[index].letter = chars[editableIndex].letter
+      chars[editableIndex].letter = originalIndexLetter
+      const guess = {
+        ...currentGuess,
+        characters: chars
+      }
+      setCurrentGuess(guess)
+      setSwapState(false)
+    }
+    setEditableIndex(index)
+  }
 
   const handleKeyPress = async (key: string): Promise<boolean> => {
     if (status === null) return false
+    setSwapState(false)
     if (key === 'ENTER') {
       if (currentGuessLength() >= 4) {
         try {
@@ -404,6 +422,7 @@ export function GameComponent() {
     hasHiddenRows: boolean,
     keyPrefix: string,
     isEditable: boolean,
+    isSwapState: boolean,
     editableIndex: number | undefined = undefined
   ) => (
     <>
@@ -414,6 +433,7 @@ export function GameComponent() {
         onRowPress={() => toggleVisibility(guess.wordIndex)}
         isAnagramGuess={ status?.state == GameState.Solved || (status?.nextGuess.wordIndex === anagramGuess && guess.wordIndex < anagramGuess) }
         isEditable={isEditable}
+        isSwapState={isSwapState}
         editableIndex={editableIndex}
         onSquareSelect={isEditable ? handleSquareSelected : undefined}
         parentWidth={parentWidth}
@@ -476,7 +496,7 @@ export function GameComponent() {
             && guess.wordIndex === extraLetter
             && showLetters
   
-          return renderGuessRow(guess, shouldInsertSpacer, squareDim, parentWidth, showLetters, hasHiddenRows, keyPrefix, notEditable);
+          return renderGuessRow(guess, shouldInsertSpacer, squareDim, parentWidth, showLetters, hasHiddenRows, keyPrefix, notEditable, notSwapState);
         })}
         {renderGuessRow(
           currentGuess,
@@ -487,6 +507,7 @@ export function GameComponent() {
           false,
           "main",
           editable,
+          swapState,
           editableIndex)}
       </YStack>
     );

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { XStack } from 'tamagui'
 import { ChevronsUpDown } from '@tamagui/lucide-icons'
 import Square from './square'
@@ -8,6 +9,7 @@ interface GuessRowProps {
   style?: any
   isAnagramGuess: boolean
   isEditable: boolean
+  isSwapState: boolean
   editableIndex?: number
   parentWidth: number
   showLetters: boolean
@@ -25,6 +27,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
   style,
   isAnagramGuess,
   isEditable,
+  isSwapState,
   editableIndex = null,
   parentWidth,
   squareDim,
@@ -32,8 +35,9 @@ const GuessRow: React.FC<GuessRowProps> = ({
   hasHiddenRows,
   keyPrefix,
   onRowPress = null,
-  onSquareSelect = null,
+  onSquareSelect = null
 }) => {
+
   const extraLetter: boolean = (guess.wordIndex === extraLetterIndex)
   let offset = guess.length
   if (extraLetter) {
@@ -50,7 +54,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
 
   const handleSquarePress = (index: number) => {
     if (onSquareSelect != null) {
-      onSquareSelect(index)
+      onSquareSelect(index);
     }
   }
 
@@ -83,6 +87,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
           isAnagramLetter={isAnagramGuess && (highlighted || extraLetter)}
           isHighlighted={highlighted}
           isEditable={isEditable && index === editableIndex}
+          isSwapState={isSwapState}
           onPress={() => handleSquarePress(index)}
         />
         )})

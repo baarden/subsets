@@ -20,6 +20,7 @@ interface SquareProps {
   isAnagramLetter: boolean
   isHighlighted: boolean
   isEditable?: boolean,
+  isSwapState: boolean,
   onPress: () => void
 }
 
@@ -31,6 +32,7 @@ const Square: React.FC<SquareProps> = ({
   isAnagramLetter = false,
   isHighlighted,
   isEditable = false,
+  isSwapState,
   onPress,
 }) => {
   const squareMargin = dimension / 15
@@ -47,7 +49,7 @@ const Square: React.FC<SquareProps> = ({
       case ClueType.Incorrect:
         return customTokens.color.gray8Light
       default:
-        return customTokens.color.transparent
+        return customTokens.color.white1
     }
   }
 
@@ -63,6 +65,8 @@ const Square: React.FC<SquareProps> = ({
   }
 
   return (
+    <Stack>
+
     <Stack
       width={squareWidth}
       height={squareHeight}
@@ -77,9 +81,31 @@ const Square: React.FC<SquareProps> = ({
       justifyContent="center"
       display="flex"
       onPress={onPress}
+      zIndex={2}
     >
-      <Text position='absolute' zIndex={5} color={'black'} fontSize={18} fontWeight={normalWidth ? "bold" : "unset"}>
-        {letter.toUpperCase()}</Text>
+      <Text position='absolute'
+        zIndex={5}
+        color={'black'}
+        fontSize={18}
+        fontWeight={normalWidth ? "bold" : "unset"}
+      >
+        {letter.toUpperCase()}
+      </Text>
+    </Stack>
+
+    { isSwapState && ! isEditable &&
+      <Stack
+        position='absolute'
+        top={1}
+        left={1}
+        backgroundColor="$blue7Light"
+        borderRadius={6}
+        height={squareHeight + 4}
+        width={squareWidth + 4}
+        zIndex={1}
+      />
+    }
+
     </Stack>
   )
 }

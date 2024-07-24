@@ -1,8 +1,16 @@
 
+create table Bigrams (Id SERIAL PRIMARY KEY, Bigram INT[]);
+
 with sets as (
 	select d.id, di.wordId, row_number() over (partition by d.id) subsetseq
-	from subsets d
-		cross join unnest(d.wordIds) di(wordId)
+		from plusone d
+			cross join unnest(d.wordIds) di(wordId)
+		where d.deleted = false
+	UNION ALL
+	select d.id + 1000000, di.wordId, row_number() over (partition by d.id) subsetseq
+		from plusonemore d
+			cross join unnest(d.wordIds) di(wordId)
+		where d.deleted = false
 ), leads as (
 	select d.id, d.wordid, lead(d.wordid, 1) over (partition by d.id order by d.subsetseq) wordid2
 	from sets d

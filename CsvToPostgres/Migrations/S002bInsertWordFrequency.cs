@@ -12,6 +12,9 @@ namespace CsvToPostgres.Migrations;
 
 public partial class S002bInsertWordFrequency : IScript
 {
+    readonly int MinWordLength = 2;
+    readonly int MaxWordLength = 8;
+
     public string ProvideScript(Func<IDbCommand> dbCommandFactory)
     {
         Console.WriteLine("Location of word frequency file:");
@@ -42,7 +45,7 @@ public partial class S002bInsertWordFrequency : IScript
             var length = word.Length;
             double freq = Math.Log(count);
 
-            if (length > 8 || length < 3) { continue; }
+            if (length > MaxWordLength || length < MinWordLength) { continue; }
 
             records.Add(new WordFrequencyRecord(
                 Word: word,
