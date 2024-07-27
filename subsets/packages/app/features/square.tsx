@@ -1,8 +1,7 @@
 import { Stack, Text, createTokens } from 'tamagui'
 import { tokens as baseTokens } from '@tamagui/config/v3'
-import LottieView from 'lottie-react-native';
 import { Variable } from '@my/ui'
-import { ClueType } from '../types/'
+import { ClueType } from 'app/types/'
 
 const customTokens = createTokens({
   ...baseTokens,

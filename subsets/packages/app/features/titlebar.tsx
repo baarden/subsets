@@ -1,13 +1,15 @@
 import React from 'react';
 import { Button, Stack, XStack, YStack, Text, Image } from 'tamagui';
 import { Info } from '@tamagui/lucide-icons'
+import { GameSettings } from 'app/types/'
 
 interface TitleBarProps {
     guessCount: number;
     onInfoPress: () => void;
+    config: GameSettings;
 }
 
-const TitleBar: React.FC<TitleBarProps> = ({ guessCount, onInfoPress }) => {
+const TitleBar: React.FC<TitleBarProps> = ({ guessCount, onInfoPress, config }) => {
     return (
         <XStack
             height={70}
@@ -19,7 +21,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ guessCount, onInfoPress }) => {
             borderBottomWidth={1}
         >
             <Stack position="absolute" left={10}>
-                <Image src="/logotype.png" alt="Subsets logo" width={52} height={40} zIndex={5} />
+                <Image src={config.logoImagePath} alt="Subsets logo" width={54} height={39} zIndex={5} />
             </Stack>
             <YStack
                 alignItems="center"

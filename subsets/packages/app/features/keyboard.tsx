@@ -3,7 +3,7 @@ import { Stack, XStack, YStack, Button, Text } from 'tamagui';
 import { tokens } from '@tamagui/config/v3';
 import { Variable } from '@my/ui';
 import LottieView from 'lottie-react-native';
-import { Clue } from '../types/'
+import { Clue } from 'app/types/'
 
 interface KeyboardProps {
   layout: string[][];

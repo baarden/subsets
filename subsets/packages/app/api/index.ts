@@ -1,7 +1,5 @@
-import { Status, ClueType, Clue, Guess, GuessState, emptyGuess, Statistics } from '../types/'
-
-const API_BASE_URL = (process.env.NODE_ENV === 'development') ? 
-  'http://localhost:8080/api' : 'https://plusone.ngrok.app/api';
+import { config } from '@my/ui';
+import { Status, ClueType, Clue, Guess, GuessState, emptyGuess, Statistics, GameSettings } from '../types/'
 
 export class ConflictError extends Error {
   constructor(message: string) {
@@ -10,10 +8,17 @@ export class ConflictError extends Error {
   }
 }
 
-export const fetchStatus = async (): Promise<Status> => {
+const baseUrl = (config: GameSettings): string => {
+  const server = (process.env.NODE_ENV === 'development') ? 
+    'http://localhost:8080' : config.siteUrl;
+  const url = server + config.apiPath;
+  return url;
+}
+
+export const fetchStatus = async (config: GameSettings): Promise<Status> => {
   var data: Status
   try {
-    const response = await fetch(`${API_BASE_URL}/status`, {
+    const response = await fetch(`${baseUrl(config)}/status`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -80,8 +85,8 @@ export const fetchStatus = async (): Promise<Status> => {
   };
 }
 
-export const submitGuess = async (guess: string, today: string): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/guess`, {
+export const submitGuess = async (guess: string, today: string, config: GameSettings): Promise<void> => {
+  const response = await fetch(`${baseUrl(config)}/guess`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -102,10 +107,10 @@ export const submitGuess = async (guess: string, today: string): Promise<void> =
   }
 }
 
-export const fetchStats = async () : Promise<Statistics> => {
+export const fetchStats = async (config: GameSettings) : Promise<Statistics> => {
   var data: Statistics
   try {
-    const response = await fetch(`${API_BASE_URL}/stats`, {
+    const response = await fetch(`${baseUrl(config)}/stats`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',

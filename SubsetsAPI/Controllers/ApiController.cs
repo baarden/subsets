@@ -10,8 +10,12 @@ namespace SubsetsAPI.Controllers;
 public partial class ApiController : ControllerBase
 {
     // RegularExpressions turns the class into a partial
+    [GeneratedRegex(@"^ *[a-zA-Z]{4,7} *$")]
+    private static partial Regex PlusOneGuessRegex();
+
     [GeneratedRegex(@"^ *[a-zA-Z]{4,8} *$")]
-    private static partial Regex GuessRegex();
+    private static partial Regex PlusOneMoreGuessRegex();
+
 
     private readonly GameService _gameService;
     private readonly ILogger<ApiController> _logger;
@@ -23,8 +27,11 @@ public partial class ApiController : ControllerBase
     }
 
     [HttpGet("status")]
+    [HttpGet("more/status")]
     public ActionResult<Status> GetStatus()
     {
+        bool isMore = HttpContext.Request.Path.StartsWithSegments("/api/more");
+
         int? userId = GetUser();
         if (userId == null) { return Unauthorized("User not found."); }
 
@@ -32,16 +39,20 @@ public partial class ApiController : ControllerBase
 
         Status status;
         try {
-            (status, _) = _gameService.GetStatus((int)userId, today);
+            (status, _) = _gameService.GetStatus((int)userId, today, isMore);
             return Ok(status);
         } catch (Exception e) {
+            Console.WriteLine(e.ToString());
             return BadRequest(e.Message);
         }
     }
 
     [HttpGet("stats")]
+    [HttpGet("more/stats")]
     public ActionResult<Statistics> GetStats()
     {
+        bool isMore = HttpContext.Request.Path.StartsWithSegments("/api/more");
+
         int? userId = GetUser();
         if (userId == null) { return Unauthorized("User not found."); }
 
@@ -49,7 +60,7 @@ public partial class ApiController : ControllerBase
 
         Statistics stats;
         try {
-            stats = _gameService.GetStatistics((int)userId, today);
+            stats = _gameService.GetStatistics((int)userId, today, isMore);
             return Ok(stats);
         } catch (Exception e) {
             return BadRequest(e.Message);
@@ -57,43 +68,43 @@ public partial class ApiController : ControllerBase
     }
 
     [HttpPost("guess")]
-    public ActionResult<GuessResponse> PostGuess([FromBody] GuessPayload payload)
+    [HttpPost("more/guess")]
+    public ActionResult<GuessResponse> PostGuess([FromBody] GuessRequest guessRequest)
     {
-        if (payload == null || string.IsNullOrWhiteSpace(payload.Guess))
+        bool isMore = HttpContext.Request.Path.StartsWithSegments("/api/more");
+
+        if (guessRequest == null || string.IsNullOrWhiteSpace(guessRequest.Guess))
         {
             return UnprocessableEntity("Empty guess submitted.");
         }
 
         DateOnly today = GetDate();
-        if (payload.Date.CompareTo(today) != 0) {
+        if (guessRequest.Date.CompareTo(today) != 0) {
             return Conflict("Date mismatch");
         }
-
-        string guess = payload.Guess.ToLower(CultureInfo.InvariantCulture);
 
         int? userId = GetUser();
         if (userId == null) { return Unauthorized("User not found."); }
 
         Status status;
         string? refWord;
-        (status, refWord) = _gameService.GetStatus((int)userId, today);
+        (status, refWord) = _gameService.GetStatus((int)userId, today, isMore);
         if (status == null) { return StatusCode(500, "Unable to retrieve status."); }
-        if (status.NextGuess == null || refWord == null || guess.Length != refWord.Length || !GuessRegex().IsMatch(guess))
-        {
-            return BadRequest("Invalid guess length");
-        }
 
-        if (status.Guesses.Any(g => (
-            g.GuessWord.Trim() == guess.Trim()
-            && g.WordIndex == status.NextGuess.WordIndex
-            )))
-        {
-            return BadRequest("Already guessed");
+        string guess = guessRequest.Guess.ToLower(CultureInfo.InvariantCulture);
+        string? validationError = ValidateGuess(guess, today, refWord, status, isMore);
+        if (validationError != null) {
+            return BadRequest(validationError);
         }
 
         int guessNumber = status.Guesses.Count + 1;
-
-        bool inserted = _gameService.AddGuess((int)userId, today, guessNumber, status.NextGuess.WordIndex, guess, out string errorMessage);
+        (bool inserted, string? errorMessage) = _gameService.AddGuess(
+            (int)userId,
+            today,
+            guessNumber,
+            status.NextGuess!.WordIndex,
+            guess,
+            isMore);
         if (!inserted)
         {
             if (errorMessage != null) { return BadRequest(errorMessage); }
@@ -101,6 +112,29 @@ public partial class ApiController : ControllerBase
         }
 
         return Ok();
+    }
+
+    private static string? ValidateGuess(string guess, DateOnly today, string? refWord, Status status, bool isMore)
+    {
+        Regex regex = isMore ? PlusOneMoreGuessRegex() : PlusOneGuessRegex();
+
+        if (status.NextGuess == null 
+            || refWord == null 
+            || guess.Length != refWord.Length
+            || !regex.IsMatch(guess)
+            )
+        {
+            return "Invalid guess length";
+        }
+
+        if (status.Guesses.Any(g => (
+            g.GuessWord.Trim() == guess.Trim()
+            && g.WordIndex == status.NextGuess.WordIndex
+            )))
+        {
+            return "Already guessed";
+        }
+        return null;
     }
 
     private int? GetUser()

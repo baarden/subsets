@@ -9,18 +9,62 @@ import Drawer from './drawer'
 import SummaryDrawer from './summary'
 import { fetchStatus, submitGuess, fetchStats, ConflictError } from '../api'
 import { Dimension, useResponsiveDimensions } from '../hooks/useResponsiveDimensions'
-import { GuessState, Status, Guess, GameState, emptyGuess, Clue, ClueType, Statistics } from '../types/'
+import { GuessState, Status, Guess, GameState, emptyGuess, Clue, ClueType, Statistics, GameSettings, ScoringRange, ExampleText, KeyboardAction } from '../types/'
 
 const squareWidth: number = 45
-const anagramGuess: number = 7
-const extraLetter: number = 6
 const titleBarHeight: number = 70
 const bottomPanelHeight: number = 140
 const scoringPanelWidth: number = 140
 const backspace = '\u232B'
 const shuffle = '\uD83D\uDD00'
 
-export function GameComponent() {
+const plusOneMoreScoreRanges: ScoringRange[] = [
+  { min: 5, max: 10, message: "Excellent job!" },
+  { min: 11, max: 12, message: "Great job!" },
+  { min: 13, max: 14, message: "Nice job!" },
+  { min: 15, max: Infinity, message: "Good try!" },
+];
+
+const plusOneMoreExamples: ExampleText = {
+  startWord: "MET",
+  exampleWord: "MANY",
+  correctLetters: "M",
+  wrongLetters: "A, N",
+  nonLetters: "Y",
+  anagram: "CYANIDE"  
+}
+
+const plusOneSettings: GameSettings = {
+  siteUrl: "https://plusone.ngrok.app",
+  anagramIndex: 6,
+  apiPath: "/api",
+  gameName: "Plus One",
+  scoreRanges: plusOneMoreScoreRanges,
+  exampleText: plusOneMoreExamples,
+  logoImagePath: "/plus-one.png",
+  fullExampleImagePath: "/full_example.png",
+  exampleImagePath: "/example.png",
+  anagramImagePath: "/anagram.png"
+}
+
+const plusOneMoreSettings: GameSettings = {
+  siteUrl: "https://plusone.ngrok.app/more",
+  anagramIndex: 7,
+  apiPath: "/api/more",
+  gameName: "Plus One More",
+  scoreRanges: plusOneMoreScoreRanges,
+  exampleText: plusOneMoreExamples,
+  logoImagePath: "/plus-one-more.png",
+  fullExampleImagePath: "/full_example.png",
+  exampleImagePath: "/example.png",
+  anagramImagePath: "/anagram.png"
+}
+
+interface GameComponentProps {
+  path: string;
+}
+
+export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [summaryVisible, setSummaryVisible] = useState(false);
   const screenDim: Dimension = useResponsiveDimensions();
@@ -42,7 +86,9 @@ export function GameComponent() {
   const [guessCount, setGuessCount] = useState<number>(0)
   const [swapState, setSwapState] = useState<boolean>(false)
 
-  const keyboardRef = useRef<KeyboardHandles>(null);  
+  const config = (path === "/more") ? plusOneMoreSettings : plusOneSettings;
+  const extraLetterIndex: number = config.anagramIndex - 1
+  const keyboardRef = useRef<KeyboardHandles>(null);
   const scrollViewRef = useRef<RNScrollVIew>(null);
   const showLetters = true, hideLetters = false;
   const showRows = true, hideRows = false;
@@ -57,7 +103,7 @@ export function GameComponent() {
       localStorage.setItem('hasVisited', 'true');
     }
     
-    fetchStatus()
+    fetchStatus(config)
       .then((statusData) => {
         updateStatus(statusData)
       })
@@ -84,12 +130,12 @@ export function GameComponent() {
     const prevGuess = statusData.guesses.slice(-1)[0]
     var nextGuess = statusData.nextGuess
     setCurrentGuess(nextGuess)
-    const extraGuesses = (statusData.state === GameState.Solved || statusData.nextGuess.wordIndex === anagramGuess) ? 2 : 1;
+    const extraGuesses = (statusData.state === GameState.Solved || statusData.nextGuess.wordIndex === config.anagramIndex) ? 2 : 1;
     const guesses = statusData.guesses.length - extraGuesses
     setGuessCount(guesses)
     if (statusData.state == GameState.Solved) {
       displaySummary(guesses)
-      const feedback = getFeedback(guesses, 7, false)
+      const feedback = getFeedback(guesses, config.anagramIndex, false)
       setError(`You solved it in ${guesses}! ${feedback}`)
       return
     }
@@ -97,7 +143,7 @@ export function GameComponent() {
       const penultGuess = statusData.guesses.slice(-2)[0]
       const isGuessInOne = penultGuess.state == GuessState.Solved
       const feedback = getFeedback(guesses, nextGuess.wordIndex, isGuessInOne)
-      if (nextGuess.wordIndex == 7) {
+      if (nextGuess.wordIndex == config.anagramIndex) {
         setError("Arrange the plus-one letters to solve")
       } else if (nextGuess.wordIndex > 2) {
         setError(feedback)
@@ -108,7 +154,7 @@ export function GameComponent() {
       setError('')
     }
     let refWord = ""
-    if (statusData.nextGuess.wordIndex < anagramGuess) {
+    if (statusData.nextGuess.wordIndex < config.anagramIndex) {
       statusData.guesses.forEach(guess => {
         if (guess.state === GuessState.Solved) {
           refWord = guess.guessWord
@@ -127,12 +173,12 @@ export function GameComponent() {
   }
 
   const displaySummary = (guesses: number) => {
-    fetchStats()
+    fetchStats(config)
       .then((statsData) => {
         setStatistics(statsData)
       })
       .catch((err) => setError('Failed to fetch statistics'))
-    setFeedback(getFeedback(guesses, 7, false))
+    setFeedback(getFeedback(guesses, config.anagramIndex, false))
     setSummaryVisible(true)
   }
 
@@ -140,14 +186,8 @@ export function GameComponent() {
     if (isGuessInOne && wordIndex > 2) {
       return "Guess in one!"
     }
-    const ranges = [
-      { min: 5, max: 10, message: "Excellent job!" },
-      { min: 11, max: 12, message: "Great job!" },
-      { min: 13, max: 14, message: "Nice job!" },
-      { min: 15, max: Infinity, message: "Good try!" },
-    ];
-    const score = guesses + 7 - wordIndex
-    const feedback = ranges.find(range => score >= range.min && score <= range.max);
+    const score = guesses + config.anagramIndex - wordIndex
+    const feedback = config.scoreRanges.find(range => score >= range.min && score <= range.max);
     return feedback ? feedback.message : "Invalid score";
   }
 
@@ -163,7 +203,7 @@ export function GameComponent() {
     let firstRow = keyArr.map(c => c.toUpperCase());
     const secondRow = [backspace, shuffle, 'ENTER'];
 
-    if (wordIndex < anagramGuess) {
+    if (wordIndex < config.anagramIndex) {
       firstRow = removeKeysFromClues(firstRow, wordIndex, refWord, guesses);
     }
 
@@ -172,22 +212,14 @@ export function GameComponent() {
 
   const removeKeysFromClues = (firstRow: string[], wordIndex: number, refWord: string, guesses: Guess[]): string[] => {
     // firstRow -> { key: string, status: number, plusone: boolean }
-    // Loop over guesses for the current wordIndex
-    //   For any good clue:
-    //   - set an unmarked char to safe. If none, set a deleted char to safe.
-    //   - if that char is plus-one, set goodPlusOne to true
-    //   For any incorrect clue, set an unmarked char as deleted
-    //   If all clues are good, mark any unmarked chars as deleted
-    //   If goodPlusOne is true, mark any unmarked plus-one as deleted
-    //   Merge with master: safe > deleted > unmarked
-    // Apply any master deletions to firstRow
     const goodTypes = [ClueType.AllCorrect, ClueType.CorrectLetter];
-    let states = firstRow.map(c => { return {key: c, state: 0, plusone: true}; });
+    let states = firstRow.map(c => { return {key: c, state: KeyboardAction.Unset, plusone: true}; });
     refWord.toUpperCase().split('').forEach(c => {
       const idx = states.findIndex(s => s.key === c && s.plusone === true);
       states[idx].plusone = false;
     });
     const stateRef = structuredClone(states);
+    // Loop over guesses for the current wordIndex
     guesses.forEach((guess) => {
       if (guess.wordIndex !== wordIndex) { return; }
       const chars = guess.characters;
@@ -196,39 +228,49 @@ export function GameComponent() {
       let goodPlusOne = false;
       chars.forEach(c => {
         const upperC = c.letter.toUpperCase();
+        // For any good clue:
+        // - set an unmarked char to safe. If none, set a deleted char to safe.
+        // - if that char is plus-one, set goodPlusOne to true        
         if (goodTypes.includes(c.clueType)) {
-          let idx = localStates.findIndex(s => s.key === upperC && s.state === 0);
+          let idx = localStates.findIndex(s => s.key === upperC && s.state === KeyboardAction.Unset);
           if (idx === -1) {
-            idx = localStates.findIndex(s => s.key === upperC && s.state === -1)
+            idx = localStates.findIndex(s => s.key === upperC && s.state === KeyboardAction.Delete)
           }
-          localStates[idx].state = 1;
+          localStates[idx].state = KeyboardAction.Keep;
           if (localStates[idx].plusone) {
             goodPlusOne = true;
           }
           goodCount++;
+        // For any incorrect clue, set an unmarked char as deleted. Prefer to remove plus-one chars first.
         } else if (c.clueType === ClueType.Incorrect) {
-          const idx = localStates.findIndex(s => s.key === upperC && s.state === 0);
+          const idx = localStates.findLastIndex(s => s.key === upperC && s.state === KeyboardAction.Unset);
           if (idx >= 0) {
-            localStates[idx].state = -1;
+            localStates[idx].state = KeyboardAction.Delete;
           }
         }
       });
+      // Merge with master: keep > delete > unset
       for (let i = 0; i < states.length; i++) {
         const ls = localStates[i];
         const s = states[i];
+        // If all clues are good, mark any unmarked chars as deleted
         if (ls.state === 0 && goodCount === guess.length) {
-          localStates[i].state = -1;
+          localStates[i].state = KeyboardAction.Delete;
         }
-        if (ls.plusone && goodPlusOne && ls.state !== 1) {
-          localStates[i].state = -1;
+        // If goodPlusOne is true, mark any unmarked plus-one as deleted
+        if (ls.plusone && goodPlusOne && ls.state !== KeyboardAction.Keep) {
+          localStates[i].state = KeyboardAction.Delete;
         }
-        const newState = (ls.state === 1 || s.state === 1) ? 1 : (ls.state === -1 || s.state === -1) ? -1 : 0; 
+        const newState = (ls.state === KeyboardAction.Keep || s.state === KeyboardAction.Keep) 
+          ? KeyboardAction.Keep : (ls.state === KeyboardAction.Delete || s.state === KeyboardAction.Delete) 
+          ? KeyboardAction.Delete : KeyboardAction.Unset;
         s.state = newState;
       }
     });
+    // Apply any master deletions to firstRow
     for (let i = states.length - 1; i >= 0; i--) {
       const s = states[i];
-      if (s.state === -1) {
+      if (s.state === KeyboardAction.Delete) {
         firstRow.splice(i, 1);
       }
     }
@@ -261,12 +303,13 @@ export function GameComponent() {
     if (key === 'ENTER') {
       if (currentGuessLength() >= 4) {
         try {
-          await submitGuess(currentGuess.characters.map((clue) => clue.letter).join(''), status.today)
-          const statusData = await fetchStatus()
+          const guess = currentGuess.characters.map((clue) => clue.letter).join('')
+          await submitGuess(guess, status.today, config)
+          const statusData = await fetchStatus(config)
           updateStatus(statusData)
         } catch (err) {
           if (err instanceof ConflictError) {
-            const statusData = await fetchStatus()
+            const statusData = await fetchStatus(config)
             updateStatus(statusData)
           } else {
             setError(err.message)
@@ -321,7 +364,7 @@ export function GameComponent() {
     return newCharacters
   }
 
-  function shuffleArray(array) {
+  function shuffleArray(array: any[]) {
     let shuffledArray = array.slice();
     for (let i = shuffledArray.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -431,7 +474,7 @@ export function GameComponent() {
         style={{ display: 'flex' }}
         guess={guess}
         onRowPress={() => toggleVisibility(guess.wordIndex)}
-        isAnagramGuess={ status?.state == GameState.Solved || (status?.nextGuess.wordIndex === anagramGuess && guess.wordIndex < anagramGuess) }
+        isAnagramGuess={ status?.state == GameState.Solved || (status?.nextGuess.wordIndex === config.anagramIndex && guess.wordIndex < config.anagramIndex) }
         isEditable={isEditable}
         isSwapState={isSwapState}
         editableIndex={editableIndex}
@@ -441,6 +484,7 @@ export function GameComponent() {
         hasHiddenRows={hasHiddenRows}
         keyPrefix={keyPrefix}
         squareDim={squareDim}
+        config={config}
       />
       {shouldInsertSpacer && renderSpacer()}
       </>
@@ -483,7 +527,7 @@ export function GameComponent() {
             visibleWordIndices.has(guess.wordIndex) ||
             guess.wordIndex === status.nextGuess.wordIndex ||
             guess.state === GuessState.Solved;
-          if (status.state === GameState.Solved && guess.wordIndex === anagramGuess) {
+          if (status.state === GameState.Solved && guess.wordIndex === config.anagramIndex) {
             isVisible = false;
           }
           if (!isVisible) {
@@ -493,7 +537,7 @@ export function GameComponent() {
           const shouldInsertSpacer =
             status.state != GameState.Solved
             && guess.state == GuessState.Solved
-            && guess.wordIndex === extraLetter
+            && guess.wordIndex === extraLetterIndex
             && showLetters
   
           return renderGuessRow(guess, shouldInsertSpacer, squareDim, parentWidth, showLetters, hasHiddenRows, keyPrefix, notEditable, notSwapState);
@@ -514,7 +558,7 @@ export function GameComponent() {
   }
 
   const toggleVisibility = (wordIndex: number) => {
-    if (status?.nextGuess.wordIndex == 7) { return }
+    if (status?.nextGuess.wordIndex == config.anagramIndex) { return }
     setVisibleWordIndices((prevIndices) => {
       const newIndices = new Set(prevIndices)
       if (newIndices.has(wordIndex)) {
@@ -524,33 +568,6 @@ export function GameComponent() {
       }
       return newIndices
     })
-  }
-
-  const ScoringPanel = () => {
-    if (!status) {
-      return null;
-    }
-    return (    
-      <Stack
-        position="absolute"
-        top={60}
-        right={0}
-        width={scoringPanelWidth}
-        padding={5}
-        height="auto"
-        backgroundColor="$green4Light"
-        zIndex={0}
-      >
-        <XStack justifyContent="space-between">
-          <Stack flex={1} />
-          <Text fontSize={12} flex={1}>GUESSES: {(status?.guesses.length || 1) - 1}</Text>
-          { status?.state == GameState.Solved && (
-            <Button size="$1" icon={Share} theme="light"/>
-          )}
-        </XStack>
-        { renderGuessRows(10, scoringPanelWidth, hideLetters, showRows, orderByKey, "score") }
-      </Stack>
-    );
   }
 
   return (
@@ -566,17 +583,18 @@ export function GameComponent() {
         backgroundColor="$background"
         zIndex={2}
       >
-        {status && <TitleBar guessCount={guessCount} onInfoPress={handleInfoPress} />}
+        {status && <TitleBar guessCount={guessCount} onInfoPress={handleInfoPress} config={config} />}
         { renderError() }
       </Stack>
 
-      <Drawer visible={drawerVisible} onClose={handleDrawerClose} />
+      <Drawer visible={drawerVisible} onClose={handleDrawerClose} config={config} />
       <SummaryDrawer
         statistics={statistics || undefined}
         status={status || undefined}
         feedback={feedback}
         visible={summaryVisible}
-        onClose={handleSummaryClose} />
+        onClose={handleSummaryClose}
+        config={config} />
 
       {/* GuessRows in the middle and scrollable */}
       <ScrollView
@@ -595,9 +613,9 @@ export function GameComponent() {
         {
           renderGuessRows(squareWidth, screenDim.width, showLetters, hideRows, orderByPosition, "main")
         }
-        { (status?.state == GameState.Unsolved && status.nextGuess.wordIndex == 7) &&
+        { (status?.state == GameState.Unsolved && status.nextGuess.wordIndex == config.anagramIndex) &&
           <YStack alignItems='center' width="100%" marginVertical={8}>
-            <Text fontWeight='bold' fontSize={12}>CLUE: “{status?.clueWord}”</Text>
+            <Text fontWeight='bold' fontSize={12}>CLUE: “{status.clueWord}”</Text>
           </YStack>
         }
       </ScrollView>

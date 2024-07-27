@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { XStack } from 'tamagui'
 import { ChevronsUpDown } from '@tamagui/lucide-icons'
 import Square from './square'
-import { Guess, Clue, GuessState } from '../types/'
+import { Guess, Clue, GuessState, GameSettings } from 'app/types/'
 
 interface GuessRowProps {
   guess: Guess
@@ -16,11 +16,10 @@ interface GuessRowProps {
   hasHiddenRows: boolean
   squareDim: number
   keyPrefix: string
+  config: GameSettings
   onRowPress?: () => void
   onSquareSelect?: (index: number) => void
 }
-
-const extraLetterIndex = 6
 
 const GuessRow: React.FC<GuessRowProps> = ({
   guess,
@@ -34,10 +33,12 @@ const GuessRow: React.FC<GuessRowProps> = ({
   showLetters,
   hasHiddenRows,
   keyPrefix,
+  config,
   onRowPress = null,
   onSquareSelect = null
 }) => {
 
+  const extraLetterIndex = config.anagramIndex - 1
   const extraLetter: boolean = (guess.wordIndex === extraLetterIndex)
   let offset = guess.length
   if (extraLetter) {

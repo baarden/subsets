@@ -1,12 +1,20 @@
+import React from 'react';
 import { YStack, XStack, Stack, Button, Image, Text, ScrollView, styled } from 'tamagui';
 import { ChevronRight, XCircle } from '@tamagui/lucide-icons';
+import { GameSettings, ScoringRange } from 'app/types/';
 
 const DefaultText = styled(Text, {
     fontSize: 12,
     textAlign: "left"
   })
 
-const Drawer = ({ visible, onClose }) => {
+interface DrawerProps {
+  visible: boolean;
+  onClose: () => void;
+  config: GameSettings;
+}
+
+const Drawer: React.FC<DrawerProps> = ({ visible, onClose, config }) => {
   if (!visible) return null;
 
   return (
@@ -35,7 +43,7 @@ const Drawer = ({ visible, onClose }) => {
         padding={16}
       >
         <XStack justifyContent="flex-end">
-          <Text fontSize={18} fontWeight="bold" flex={5}>How to play Plus One</Text>
+          <Text fontSize={18} fontWeight="bold" flex={5}>How to play {config.gameName}</Text>
           <Button size="$2" icon={XCircle} theme="light" onPress={onClose} flex={1} />
         </XStack>
         <ScrollView>
@@ -49,14 +57,14 @@ const Drawer = ({ visible, onClose }) => {
               <XStack width="100%" backgroundColor="$blue3Light">
                 <Stack width={20}><ChevronRight width={15}/></Stack>
                 <DefaultText fontWeight="bold" marginTop={4}>
-                  The next word has all of the same letters — plus one!
+                  The next word has the same letters — plus one!
                 </DefaultText>
               </XStack>
               <DefaultText marginTop={8}>
-                If the starting word is "MET", the answers could look like this:
+                If the starting word is "{config.exampleText.startWord}", the answers could look like this:
               </DefaultText>
               <YStack alignItems="center" width="100%">
-                <Image src="/full_example.png" alt="Full example" width={292} height={218} marginVertical={8}/>
+                <Image src={config.fullExampleImagePath} alt="Full example" width={292} height={218} marginVertical={8}/>
               </YStack>
               <DefaultText>
                 The plus-one letter is highlighted in each row.
@@ -83,17 +91,28 @@ const Drawer = ({ visible, onClose }) => {
               </XStack>
 
               <DefaultText marginTop={8}>
-                For the third word, you could guess "MANY" to get clues:
+                For the third word, you could guess "{config.exampleText.exampleWord}" to get clues:
               </DefaultText>
               <YStack alignItems="center" width="100%">
-                <Image src="/example.png" alt="Example" width={205} height={42} marginVertical={8}/>
+                <Image src={config.exampleImagePath} alt="Example" width={205} height={42} marginVertical={8}/>
               </YStack>
-              <DefaultText><DefaultText fontWeight="bold">M</DefaultText> is in the word and in the correct square.</DefaultText>
-              <DefaultText><DefaultText fontWeight="bold">A, N</DefaultText> are in the word but in the wrong square.</DefaultText>
-              <DefaultText><DefaultText fontWeight="bold">Y</DefaultText> is not in the word in any square.</DefaultText>
+              <DefaultText>
+                <DefaultText fontWeight="bold">{config.exampleText.correctLetters}</DefaultText>
+                : in the word and in the correct square.
+              </DefaultText>
+              <DefaultText>
+                <DefaultText fontWeight="bold">{config.exampleText.wrongLetters}</DefaultText>
+                : in the word but in the wrong square.
+              </DefaultText>
+              <DefaultText>
+                <DefaultText fontWeight="bold">{config.exampleText.nonLetters}</DefaultText>
+                : not in the word in any square.
+              </DefaultText>
               <DefaultText marginTop={8}>The last square isn't used, and doesn't provide a clue.</DefaultText>
 
-              <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginTop={16}>SOLUTION</DefaultText>
+              <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginTop={16}>
+                SOLUTION
+              </DefaultText>
               <XStack backgroundColor="$blue3Light" marginTop={8}>
                 <Stack width={20}><ChevronRight width={15}/></Stack>
                 <DefaultText fontWeight="bold" marginTop={4}>
@@ -108,7 +127,7 @@ const Drawer = ({ visible, onClose }) => {
               </XStack>
 
               <DefaultText marginTop={8}>
-                With the clue below you might guess "CYANIDE":
+                With the clue below you might guess "{config.exampleText.anagram}":
               </DefaultText>
               <YStack alignItems="center" width="100%">
                 <Image src="/anagram.png" alt="Example" width={304} height={358} marginTop={8}/>
@@ -118,11 +137,20 @@ const Drawer = ({ visible, onClose }) => {
                 A new puzzle is published every day at midnight US Eastern time!
               </DefaultText>
 
-              <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginVertical={16}>SCORING</DefaultText>
-              <DefaultText><DefaultText fontWeight="bold">5-10 guesses:</DefaultText> Excellent!</DefaultText>
-              <DefaultText><DefaultText fontWeight="bold">11-12 guesses:</DefaultText> Great!</DefaultText>
-              <DefaultText><DefaultText fontWeight="bold">13-14 guesses:</DefaultText> Nice!</DefaultText>
-              <DefaultText><DefaultText fontWeight="bold">15+ guesses:</DefaultText> Good try!</DefaultText>
+              <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginVertical={16}>
+                SCORING
+              </DefaultText>
+              {
+                config.scoreRanges.map((range: ScoringRange, index: number) => {
+                  const rangeText = (range.max === Infinity) ? `${range.min}+` : `${range.min}-${range.max}`;
+                  return (
+                    <DefaultText>
+                      <DefaultText fontWeight="bold">{rangeText} guesses: </DefaultText>
+                      {range.message}
+                    </DefaultText>
+                  );
+                })
+              }
 
             </YStack>
         </ScrollView>

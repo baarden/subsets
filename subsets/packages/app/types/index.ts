@@ -17,6 +17,12 @@ export enum GameState {
   Unsolved = 1
 }
 
+export enum KeyboardAction {
+  Keep = 1,
+  Unset = 0,
+  Delete = -1
+}
+
 export interface Clue {
   letter: string;
   clueType: ClueType;
@@ -47,6 +53,34 @@ export interface Statistics {
   played: number,
   solved: number,
   streak: number
+}
+
+export interface ExampleText {
+  startWord: string,
+  exampleWord: string,
+  correctLetters: string,
+  wrongLetters: string,
+  nonLetters: string,
+  anagram: string
+}
+
+export interface ScoringRange {
+  min: number;
+  max: number;
+  message: string;
+}
+
+export interface GameSettings {
+  siteUrl: string,
+  anagramIndex: number,
+  apiPath: string,
+  gameName: string,
+  scoreRanges: ScoringRange[],
+  exampleText: ExampleText,
+  logoImagePath: string,
+  fullExampleImagePath: string,
+  exampleImagePath: string,
+  anagramImagePath: string,
 }
 
 export const emptyGuess: Guess = {

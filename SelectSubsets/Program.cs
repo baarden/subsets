@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using Npgsql;
+using SelectSubsets;
 
 /*
 Run this query afterward to set playdates for the output:
@@ -9,27 +10,53 @@ Run this query afterward to set playdates for the output:
 with playdates as (
 	select s.id,
 		pd.lastDate + (row_number() over (order by random()) || ' days')::interval playdate
-	from subsets2 s
-	  cross join (select max(playdate) lastDate from subsets2) pd
+	from plusonemore s
+	  cross join (
+        select coalesce(max(playdate), (now() + '-1 day'::interval)::date) lastDate from plusonemore
+      ) pd
 	where batch is not null and playdate is null
 )
-update subsets2 s
+update plusonemore s
 set playdate = p.playdate
 from playdates p
 where s.id = p.id
 ;
 */
 
+// PlusOne
+// Initial: 12794 sets
+// After batch 1 (86): 7979
+// After batch 2 (): 
+
 class Program
 {
+    private static readonly AppSettings PlusOneSettings = new AppSettings(
+        SetTable: "plusone",
+        NonWordTable: "nonwordplusone",
+        StartWordIndex: 5,
+        TargetRanking: 83.0
+    );
+    private static readonly AppSettings PlusOneMoreSettings = new AppSettings(
+        SetTable: "plusonemore",
+        NonWordTable: "nonwordplusonemore",
+        StartWordIndex: 6,
+        TargetRanking: 97.0
+    );
     private static readonly string connectionString = "Host=localhost;Username=admin;Password=T9Bt4M7tSB!r;Database=plusone";
     private static readonly int _batch = 1;
-    private static readonly string SetTable = "plusone";
-    private static readonly string NonWordTable = "nonwordplusone";
     internal static readonly char[] separator = [' '];
+    private static AppSettings _config = PlusOneSettings;
 
-    static void Main()
+
+    static void Main(string[] args)
     {
+        bool isMore = false;
+        if (args.Length > 0 && Array.Exists(args, element => element.Equals("more", StringComparison.OrdinalIgnoreCase)))
+        {
+            isMore = true;
+        }
+        _config = isMore ? PlusOneMoreSettings : PlusOneSettings;
+
         using var conn = new NpgsqlConnection(connectionString);
         conn.Open();
 
@@ -95,19 +122,16 @@ class Program
 
     private static (int, string[]?) GetBestSubsets(NpgsqlConnection conn)
     {
-        const double targetRanking = 83.0;  // The median of a complete run of subsets [plusone]
-        // const double targetRanking = 97.0;  // The median of a complete run of subsets [plusonemore]
-
         var query = @$"
             SELECT id, words
-            FROM {SetTable}
+            FROM {_config.SetTable}
             WHERE batchPool = @batch
                 and deleted = false
             ORDER BY ABS(ranking - @targetRanking)
             LIMIT 1";
         using var cmd = new NpgsqlCommand(query, conn);
         cmd.Parameters.AddWithValue("@batch", _batch);
-        cmd.Parameters.AddWithValue("@targetRanking", targetRanking);
+        cmd.Parameters.AddWithValue("@targetRanking", _config.TargetRanking);
         using var reader = cmd.ExecuteReader();
         if (reader.Read())
         {
@@ -167,7 +191,7 @@ class Program
         {
             UpdateSubset(index, anagram, anagramSourceChars, clue, conn);
             DeleteSubsetOverlaps(index, conn);
-            MoveFirstLastOverlapsToNextBatch(index, conn);
+            MoveWordOverlapsToNextBatch(index, conn);
             transaction.Commit();
         }
         catch (Exception ex)
@@ -185,7 +209,7 @@ class Program
         NpgsqlConnection conn)
     {
         var queryUpdate = @$"
-            update {SetTable} d
+            update {_config.SetTable} d
             set batch = @batch,
                 batchPool = null,
                 anagram = @anagram,
@@ -207,22 +231,23 @@ class Program
     private static void DeleteSubsetOverlaps(int index, NpgsqlConnection conn)
     {
         var queryDeleteSubsetOverlaps = @$"
-            with bestsubset as (
-                select id, bigrams
-                from {SetTable}
-                where id = @id
-            ), deletions as (
-                select d.id set_id
-                from {SetTable} d
-                    cross join bestsubset bd
-                where d.id != bd.id
-                    and cardinality(d.bigrams & bd.bigrams) > 1
-                    and d.deleted = false
-            )
-            update {SetTable}
+			select d.id set_id
+			into temp table deletions
+			from {_config.SetTable} d
+				cross join (
+					select id, bigrams
+					from {_config.SetTable}
+					where id = @id
+				) bd
+			where d.id != bd.id
+				and cardinality(d.bigrams & bd.bigrams) > 1
+				and d.deleted = false;
+
+            update {_config.SetTable}
             set deleted = true
-            where id in (select set_id from deletions)
-            ;
+            where id in (select set_id from deletions);
+
+            drop table deletions;
         ";
 
         using var cmdDeleteSubsets = new NpgsqlCommand(queryDeleteSubsetOverlaps, conn);
@@ -232,28 +257,53 @@ class Program
         Console.WriteLine("Sets with 2+ bigram overlaps deleted.");
     }
 
-    private static void MoveFirstLastOverlapsToNextBatch(int index, NpgsqlConnection conn)
+    private static void MoveWordOverlapsToNextBatch(int index, NpgsqlConnection conn)
     {
         var queryMoveOverlaps = @$"
-            with bestsubsets as (
-	            select id, wordids
-	            from {SetTable}
-	            where id = @id
-            ), updates as (
-	            select d.id update_id
-	            from {SetTable} d
-		            cross join bestsubsets bd
-	            where d.id != bd.id
-		            and d.batchPool = @batch
-                    and cardinality(d.wordids & bd.wordids) > 0
-                    and deleted = false
-            )
-            update {SetTable}
-            set batchPool = (@batch + 1)
-            where id in (select update_id from updates);
+			create temp table migrations (id serial primary key, setId int);
+
+			insert into migrations (setId)
+			select d.id
+			from {_config.SetTable} d
+				cross join (
+					select id, wordids, batchpool
+					from {_config.SetTable}
+					where id = @id
+				) bd
+			where d.id != bd.id
+				and d.batchPool = @batch
+				and cardinality(d.wordids & bd.wordids) > 0
+				and d.deleted = false
+			order by d.id
+			;
+
+			DO $$
+			DECLARE
+			    batch_size INTEGER := 1000;
+			    shift INTEGER := 0;
+			BEGIN
+			    LOOP
+			        WITH migrationBatch AS (
+			            SELECT setid
+			            FROM migrations
+						order by id
+			            LIMIT batch_size OFFSET shift
+			        )
+			        UPDATE {_config.SetTable} p
+			        SET batchpool = (@batch + 1)
+			        FROM migrationBatch m
+			        WHERE p.id = m.setid;
+			        
+			        EXIT WHEN NOT FOUND;
+			        shift := shift + batch_size;
+			    END LOOP;
+			END $$;
+
+            drop table migrations;
         ";
         
         using var cmdMoveOverlaps = new NpgsqlCommand(queryMoveOverlaps, conn);
+        cmdMoveOverlaps.CommandTimeout = 300; // 5 minutes in seconds
         cmdMoveOverlaps.Parameters.AddWithValue("@batch", _batch);
         cmdMoveOverlaps.Parameters.AddWithValue("@id", index);
         cmdMoveOverlaps.CommandTimeout = 120;
@@ -266,7 +316,7 @@ class Program
         var queryGetAnagram = @$"
             with subsetWords as (
                 select s.id subsetId, s.words, w.widx, w.word
-                from {SetTable} s
+                from {_config.SetTable} s
                     cross join unnest(s.words) with ordinality w(word, widx)
                 where s.id = @sId
             ), trigrams as (
@@ -281,7 +331,7 @@ class Program
                 select w.subsetId, c.idx, cast(c.chr as char) chr
                 from subsetWords w
                     cross join unnest(string_to_array(w.word, NULL)) with ordinality c(chr, idx)
-                where w.widx = 6
+                where w.widx = @startIndex
             ), leadWords as (
                 select
                     subsetId,
@@ -312,7 +362,7 @@ class Program
                     from plusones e
                         cross join (values (1), (2), (3)) v(idx)
                 union all
-                select subsetId, 6, idx, chr
+                select subsetId, @startIndex, idx, chr
                     from startWordChars 
             ), subsetsSorted as (
                 select subsetid,
@@ -332,8 +382,9 @@ class Program
 	                join words w on ss.sorted = any(w.subsets)
 	                    and not (t.aggTrigrams && w.trigrams)
 	                    and w.synsets is not null
-	                left join {SetTable} s on s.anagram = w.word and s.batch = @batch
-	            where s.anagram is null
+                    left join {_config.NonWordTable} nw on nw.nonword = w.word
+	                left join {_config.SetTable} s on s.anagram = w.word and s.batch = @batch
+	            where nw.nonword is null and s.anagram is null
 	            order by coalesce(w.frequency, 0) desc, w.word
 	            limit 1
 			), anagramChars as (
@@ -368,6 +419,7 @@ class Program
         using var cmd = new NpgsqlCommand(queryGetAnagram, conn);
         cmd.Parameters.AddWithValue("@sId", index);
         cmd.Parameters.AddWithValue("@batch", _batch);
+        cmd.Parameters.AddWithValue("@startIndex", _config.StartWordIndex);
         using var reader = cmd.ExecuteReader();
         if (reader.Read())
         {
@@ -384,20 +436,22 @@ class Program
             return null;
         }
         
-        var queryAnagramClue = @"
+        var queryAnagramClue = @$"
             SELECT t.synonym
             FROM Words w
                 CROSS JOIN LATERAL unnest(w.SynSets) AS s(id) 
                 JOIN synset ss ON ss.id = s.id
                 CROSS JOIN LATERAL unnest(ss.synset) AS t(synonym)
                 JOIN Words sw ON sw.Word = t.synonym
-                left join nonwords nw on nw.nonword = sw.word
+                left join {_config.NonWordTable} nw on nw.nonword = sw.word
             WHERE w.word = @anagram
                 AND sw.frequency > 12
                 AND NOT (sw.Trigrams && w.Trigrams)
                 and nw.nonword is null
             GROUP BY t.synonym, sw.Frequency
-            ORDER BY count(*) desc, sw.Frequency DESC
+            ORDER BY
+                case when t.synonym in ('author', 'artist') then 1 else 0 end, 
+                count(*) desc, sw.Frequency DESC
             LIMIT 1;
         ";
 
@@ -418,21 +472,31 @@ class Program
         if (string.IsNullOrEmpty(wordToDelete)) { return; }
 
         using var transaction = conn.BeginTransaction();
+        string insertQuery = $"INSERT INTO {_config.NonWordTable} (nonword) VALUES (@word);";
         try
         {
-            using var cmdInsert = new NpgsqlCommand($"INSERT INTO {NonWordTable} (nonword) VALUES (@word);", conn);
+            using var cmdInsert = new NpgsqlCommand(insertQuery, conn);
             cmdInsert.Parameters.AddWithValue("@word", wordToDelete);
             cmdInsert.ExecuteNonQuery();
 
             var queryDeleteSubsets = @$"
-                update {SetTable} s
+				select s.id setId
+				into temp table deletions
+				from {_config.SetTable} s
+					join words w on w.id = any(s.wordids)
+				where w.word = @word
+					and s.deleted = false;
+
+				update {_config.SetTable} s
                 set deleted = true
-                from words w
-                where w.word = @word
-	                and w.id = any(s.wordids);
+                from deletions d
+                where d.setId = s.id;
+
+                drop table deletions;
              ";
 
             using var cmdDeleteSubsets = new NpgsqlCommand(queryDeleteSubsets, conn);
+            cmdDeleteSubsets.CommandTimeout = 300; // 5 minutes in seconds
             cmdDeleteSubsets.Parameters.AddWithValue("@word", wordToDelete);
             cmdDeleteSubsets.ExecuteNonQuery();
 
@@ -467,7 +531,7 @@ class Program
         if (wordPairId == null) { return; }
 
         var queryDelete = @$"
-            update {SetTable} d
+            update {_config.SetTable} d
             set deleted = true
             from badwordpairs bwp 
             where bwp.id = @wordPairId
@@ -511,7 +575,7 @@ class Program
     private static void DeleteSubset(int index, NpgsqlConnection conn)
     {
         string query = @$"
-            update {SetTable}
+            update {_config.SetTable}
             set Deleted = true
             where id=@id
             ;

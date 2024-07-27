@@ -1,14 +1,23 @@
 
+using SubsetsAPI.Models;
+
 namespace SubsetsAPI;
 
-public static class Constants
+public class Constants
 {
     public enum GuessState { Solved, Unsolved }
     public enum GameState { Solved, Unsolved }
     public enum ClueType { CorrectLetter, AllCorrect, Incorrect, Empty }
-
     public const int StartWordIndex = 0;
-    public const int LastPlusOneIndex = 5;
-    public const int ExtraLetterIndex = 6;
-    public const int AnagramIndex = 7;
+
+    public static readonly AppSettings PlusOneConfig = new(
+        LastPlusOneIndex: 4,
+        ExtraLetterIndex: 5,
+        AnagramIndex: 6
+    );
+    public static readonly AppSettings PlusOneMoreConfig = new(
+        LastPlusOneIndex: 5,
+        ExtraLetterIndex: 6,
+        AnagramIndex: 7
+    );
 }

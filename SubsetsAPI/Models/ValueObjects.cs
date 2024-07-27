@@ -4,8 +4,12 @@ namespace SubsetsAPI.Models;
 
 public record GameDayData(string ClueWord, string Anagram, string[] AnagramSources, string[] SubsetWords);
 public record GuessData(string GuessText, int ReferenceWordIndex, int GuessNumber);
-
-public class GuessPayload
+public record AppSettings (
+    int LastPlusOneIndex,
+    int ExtraLetterIndex,
+    int AnagramIndex
+);
+public class GuessRequest
 {
     public required string Guess { get; set; }
     public required DateOnly Date { get; set; }

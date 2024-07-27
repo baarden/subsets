@@ -3,15 +3,13 @@ import { Platform } from 'react-native'
 import Clipboard from '@react-native-clipboard/clipboard'
 import { YStack, XStack, Stack, Button, Image, Text, ScrollView, styled } from 'tamagui';
 import { XCircle, Share } from '@tamagui/lucide-icons';
-import { Status, Guess, Clue, ClueType, Statistics } from '../types/';
+import { Status, Guess, Clue, ClueType, Statistics, GameSettings } from '../types/';
 
 const blueSquare = "\ud83d\udfe6";
 const redSquare = "\ud83d\udfe5";
 const whiteSquare = "\u2b1c";
 const blackSquare = "\u2b1b";
 const startWordIndex = 0;
-const extraLetterIndex = 6;
-
 
 const DefaultText = styled(Text, {
     fontSize: 12,
@@ -23,7 +21,8 @@ interface SummaryDrawerProps {
     statistics?: Statistics,
     status?: Status,
     visible: boolean,
-    onClose: () => void
+    onClose: () => void,
+    config: GameSettings
 }
 
 export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
@@ -31,10 +30,12 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
     statistics,
     status,
     visible,
-    onClose
+    onClose,
+    config
 }) => {
     if (status === undefined) { return }
     const [shareText, setShareText] = useState<string>("Share")
+    const extraLetterIndex = config.anagramIndex - 1
 
     const handleSharePress = () => {
         shareStatus()
@@ -50,7 +51,8 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
             const wordIdx = value.wordIndex;
             if (wordIdx === startWordIndex || wordIdx === extraLetterIndex) { return; }
             let row: string = "";
-            const indent = (wordIdx === 7) ? 1 : 3 - Math.ceil(wordIdx / 2);
+            const maxIndent = Math.floor((config.anagramIndex + 1) / 2) - 1;
+            const indent = (wordIdx === config.anagramIndex) ? 1 : maxIndent - Math.ceil(wordIdx / 2);
             for (let i:number = 0; i < indent; i++) {
                 row += whiteSquare;
             }
@@ -67,12 +69,12 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
                         row += blackSquare;
                 }
             })
-            for (let i:number = indent + value.characters.length; i < 8; i++) {
+            for (let i = indent + value.characters.length; i < config.anagramIndex + 1; i++) {
                 row += whiteSquare;
             }
             share.push(row);
         })
-        share.push("https://plusone.ngrok.app")
+        share.push(config.apiProdUrl)
         copyToClipboard(share.join("\n"));
     }
 
@@ -116,7 +118,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
             padding={16}
         >
             <YStack alignItems="center" width="100%">
-                <Image src="/logotype.png" alt="Subsets" width={77} height={60} />
+                <Image src={config.logoImagePath} alt="Subsets" width={82} height={59} />
                 <Button size="$2" icon={XCircle} theme="light" onPress={onClose} position="absolute" right={0} />
             </YStack>
             <ScrollView>

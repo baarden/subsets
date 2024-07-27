@@ -44,20 +44,18 @@ public class GameService
         return userId;
     }
 
-    public (Status, string?) GetStatus(int userId, DateOnly today)
+    public (Status, string?) GetStatus(int userId, DateOnly today, bool isMore)
     {
-        var status = new Status
-        {
-            Today = today
-        };
+        AppSettings config = isMore ? PlusOneMoreConfig : PlusOneConfig;
+        var status = new Status { Today = today };
 
-        var gameData = new GameDayDataProvider(today, _connectionString);
+        var gameData = new GameDayDataProvider(today, isMore, _connectionString);
         status.ClueWord = gameData.ClueWord;
 
         int key = 0;
         AddStartingGuess(status, gameData);
 
-        List<GuessData> guessDataList = FetchGuessData(userId, today);
+        List<GuessData> guessDataList = FetchGuessData(userId, today, isMore);
         int maxWordIndex = 1;
         foreach (var guessData in guessDataList)
         {
@@ -75,20 +73,20 @@ public class GameService
 
             maxWordIndex = (guess.State == GuessState.Solved) ? guess.WordIndex + 1 : guess.WordIndex;
 
-            if (guess.State == GuessState.Solved && maxWordIndex == ExtraLetterIndex) {
-                string finalLetter = gameData.HighlightLetter(ExtraLetterIndex);
-                Guess finalGuess = GetGuess(++key, finalLetter, finalLetter, ExtraLetterIndex, 1, finalLetter);
+            if (guess.State == GuessState.Solved && maxWordIndex == config.ExtraLetterIndex) {
+                string finalLetter = gameData.HighlightLetter(config.ExtraLetterIndex);
+                Guess finalGuess = GetGuess(++key, finalLetter, finalLetter, config.ExtraLetterIndex, 1, finalLetter);
                 status.Guesses.Add(finalGuess);
                 maxWordIndex++;
             }
         }
 
-        status.State = (maxWordIndex <= AnagramIndex) ? GameState.Unsolved : GameState.Solved;
+        status.State = (maxWordIndex <= config.AnagramIndex) ? GameState.Unsolved : GameState.Solved;
         string? refWord = null;
 
-        int refCharIdx = (maxWordIndex == AnagramIndex) ? AnagramIndex : LastPlusOneIndex;
+        int refCharIdx = (maxWordIndex == config.AnagramIndex) ? config.AnagramIndex : config.LastPlusOneIndex;
         List<char> gameChars = gameData.ReferenceWord(refCharIdx).ToList(); 
-        string prevWord = (maxWordIndex == AnagramIndex) ? "" : gameData.ReferenceWord(maxWordIndex - 1);
+        string prevWord = (maxWordIndex == config.AnagramIndex) ? "" : gameData.ReferenceWord(maxWordIndex - 1);
         List<char> group1 = prevWord.ToList();
         Dictionary<char, int> prevCharCounts = prevWord.GroupBy(c => c).ToDictionary(g => g.Key, g => g.Count());
         List<char> group2 = gameChars.Where(c => !prevCharCounts.ContainsKey(c) || prevCharCounts[c]-- <= 0).ToList();
@@ -103,7 +101,7 @@ public class GameService
         } else {
             int[] newOrder = gameData.AnagramSortOrder();
             List<Guess> guesses = newOrder.SelectMany(i => status.Guesses.Where(g => g.WordIndex == i)).ToList();
-            var anagramGuesses = status.Guesses.Where(g => g.WordIndex == AnagramIndex).ToList();
+            var anagramGuesses = status.Guesses.Where(g => g.WordIndex == config.AnagramIndex).ToList();
             status.Guesses = guesses.Concat(anagramGuesses).ToList();
         }
  
@@ -112,7 +110,7 @@ public class GameService
         return (status, refWord);
     }
 
-    public Statistics GetStatistics(int userId, DateOnly today)
+    public Statistics GetStatistics(int userId, DateOnly today, bool isMore)
     {
         using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
@@ -122,6 +120,7 @@ public class GameService
                 select guessdate, cast(solved as int) solved, 1 played
                     from guess
                     where userid = @userId
+                        and isMore = @isMore
                 union all
                 select @today, 0, 0
                 union all
@@ -148,6 +147,7 @@ public class GameService
 
         using var cmd = new NpgsqlCommand(guessQuery, conn);
         cmd.Parameters.AddWithValue("@userId", userId);
+        cmd.Parameters.AddWithValue("@isMore", isMore);
         cmd.Parameters.AddWithValue("@today", today);
 
         using var reader = cmd.ExecuteReader();
@@ -176,7 +176,7 @@ public class GameService
         status.Guesses.Add(GetGuess(0, startWord, startWord, index, 0, highlightLetter));
     }
 
-    private List<GuessData> FetchGuessData(int userId, DateOnly playDate)
+    private List<GuessData> FetchGuessData(int userId, DateOnly playDate, bool isMore)
     {
         var guesses = new List<GuessData>();
 
@@ -186,12 +186,15 @@ public class GameService
         string guessQuery = @"
             SELECT Guess, GuessWordIdx, GuessNumber
             FROM Guess
-            WHERE UserId = @UserId AND GuessDate = @PlayDate
+            WHERE UserId = @UserId
+                AND IsMore = @IsMore
+                AND GuessDate = @PlayDate
             ORDER BY GuessNumber;
         ";
 
         using var cmd = new NpgsqlCommand(guessQuery, conn);
         cmd.Parameters.AddWithValue("@UserId", userId);
+        cmd.Parameters.AddWithValue("@IsMore", isMore);
         cmd.Parameters.AddWithValue("@PlayDate", playDate);
 
         using var reader = cmd.ExecuteReader();
@@ -201,7 +204,11 @@ public class GameService
             int referenceWordIndex = (int)reader["GuessWordIdx"];
             int guessNumber = (int)reader["GuessNumber"];
 
-            guesses.Add(new GuessData(GuessText: guessText, ReferenceWordIndex: referenceWordIndex, GuessNumber: guessNumber));
+            var data = new GuessData(
+                GuessText: guessText,
+                ReferenceWordIndex: referenceWordIndex,
+                GuessNumber: guessNumber);
+            guesses.Add(data);
         }
 
         return guesses;
@@ -298,13 +305,17 @@ public class GameService
         return clues;
     }
 
-    public bool AddGuess(int userId, DateOnly guessDate, int guessNumber, int guessWordIndex, string guess, out string errorMessage)
+    public (bool, string?) AddGuess(
+        int userId,
+        DateOnly guessDate,
+        int guessNumber,
+        int guessWordIndex,
+        string guess,
+        bool isMore)
     {
-        errorMessage = string.Empty;
         string trimGuess = guess.Trim();
 
-        var gameData = new GameDayDataProvider(guessDate, _connectionString);
-
+        var gameData = new GameDayDataProvider(guessDate, isMore, _connectionString);
         string refWord = gameData.ReferenceWord(guessWordIndex);
 
         using var conn = new NpgsqlConnection(_connectionString);
@@ -320,22 +331,19 @@ public class GameService
         checkCmd.Parameters.AddWithValue("@Guess", trimGuess);
 
         var count = Convert.ToInt32(checkCmd.ExecuteScalar());
-        if (count == 0)
-        {
-            errorMessage = "Not in the word list";
-            return false;
-        }
+        if (count == 0) { return (false, "Not in the word list"); }
 
         Guess guessData = GetGuess(0, guess, refWord, guessWordIndex, 0);
         bool solved = guessData.Characters.All(c => c.Type == ClueType.AllCorrect);
 
         string insertQuery = @"
-            INSERT INTO Guess (UserId, GuessDate, GuessNumber, GuessWordIdx, Guess, Solved)
-            VALUES (@UserId, @GuessDate, @GuessNumber, @GuessWordIndex, @Guess, @Solved);
+            INSERT INTO Guess (UserId, IsMore, GuessDate, GuessNumber, GuessWordIdx, Guess, Solved)
+            VALUES (@UserId, @IsMore, @GuessDate, @GuessNumber, @GuessWordIndex, @Guess, @Solved);
         ";
 
         using var cmd = new NpgsqlCommand(insertQuery, conn);
         cmd.Parameters.AddWithValue("@UserId", userId);
+        cmd.Parameters.AddWithValue("@IsMore", isMore);
         cmd.Parameters.AddWithValue("@GuessDate", guessDate);
         cmd.Parameters.AddWithValue("@GuessNumber", guessNumber);
         cmd.Parameters.AddWithValue("@GuessWordIndex", guessWordIndex);
@@ -343,27 +351,32 @@ public class GameService
         cmd.Parameters.AddWithValue("@Solved", solved);
 
         int result = cmd.ExecuteNonQuery();
-        return result == 1;
+        return (result == 1, null);
     }
 
 }
 
 public class GameDayDataProvider
 {
+    private readonly string PlusOneSetTable = "plusone";
+    private readonly string PlusOneMoreSetTable = "plusonemore";
     public readonly string ClueWord;
     private readonly string _connectionString;
     private readonly GameDayData _gameDayData;
+    private readonly AppSettings _config;
 
-    public GameDayDataProvider(DateOnly playDate, string connectionString)
+    public GameDayDataProvider(DateOnly playDate, bool isMore, string connectionString)
     {
         _connectionString = connectionString;
-        _gameDayData = GetGameDayData(playDate);
+        _config = isMore ? PlusOneMoreConfig : PlusOneConfig;
+        string setTable = isMore ? PlusOneMoreSetTable : PlusOneSetTable;
+        _gameDayData = GetGameDayData(playDate, setTable);
         ClueWord = _gameDayData.ClueWord;
     }
 
     public string ReferenceWord(int index)
     {
-        return (index == AnagramIndex) ? _gameDayData.Anagram : _gameDayData.SubsetWords[index];
+        return (index == _config.AnagramIndex) ? _gameDayData.Anagram : _gameDayData.SubsetWords[index];
     }
 
     public int Offset(int index)
@@ -373,7 +386,7 @@ public class GameDayDataProvider
 
     public string HighlightLetter(int wordIndex)
     {
-        if (wordIndex == AnagramIndex) { return ""; }
+        if (wordIndex == _config.AnagramIndex) { return ""; }
         return _gameDayData.AnagramSources[wordIndex];
     }
 
@@ -393,14 +406,14 @@ public class GameDayDataProvider
         return sortOrder;
     }
 
-    private GameDayData GetGameDayData(DateOnly playDate)
+    private GameDayData GetGameDayData(DateOnly playDate, string setTable)
     {
         using var conn = new NpgsqlConnection(_connectionString);
         conn.Open();
 
-        string deltaQuery = @"
+        string deltaQuery = @$"
             SELECT ClueWord, Anagram, AnagramSources, Words
-            FROM subsets2
+            FROM {setTable}
             WHERE PlayDate = @PlayDate;
         ";
 
@@ -424,7 +437,11 @@ public class GameDayDataProvider
 
             Array.Reverse(words);
 
-            return new GameDayData(ClueWord: clueWord, Anagram: anagram, AnagramSources: anagramSources, SubsetWords: words);
+            return new GameDayData(
+                ClueWord: clueWord,
+                Anagram: anagram,
+                AnagramSources: anagramSources,
+                SubsetWords: words);
         }
 
         throw new Exception("No game data today");
