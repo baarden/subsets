@@ -36,6 +36,7 @@ const plusOneMoreExamples: ExampleText = {
 
 const plusOneSettings: GameSettings = {
   siteUrl: "https://plusone.ngrok.app",
+  sitePath: "",
   anagramIndex: 6,
   apiPath: "/api",
   gameName: "Plus One",
@@ -48,7 +49,8 @@ const plusOneSettings: GameSettings = {
 }
 
 const plusOneMoreSettings: GameSettings = {
-  siteUrl: "https://plusone.ngrok.app/more",
+  siteUrl: "https://plusone.ngrok.app",
+  sitePath: "/more",
   anagramIndex: 7,
   apiPath: "/api/more",
   gameName: "Plus One More",

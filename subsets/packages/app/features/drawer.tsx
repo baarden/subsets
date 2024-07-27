@@ -1,5 +1,5 @@
 import React from 'react';
-import { YStack, XStack, Stack, Button, Image, Text, ScrollView, styled } from 'tamagui';
+import { YStack, XStack, Stack, Button, Image, Text, ScrollView, Anchor, styled } from 'tamagui';
 import { ChevronRight, XCircle } from '@tamagui/lucide-icons';
 import { GameSettings, ScoringRange } from 'app/types/';
 
@@ -136,6 +136,21 @@ const Drawer: React.FC<DrawerProps> = ({ visible, onClose, config }) => {
               <DefaultText marginTop={8}>
                 A new puzzle is published every day at midnight US Eastern time!
               </DefaultText>
+
+              { config.gameName == "Plus One" &&
+                <DefaultText marginTop={8}>
+                  If you're looking for something harder, 
+                  try <Anchor href={config.siteUrl + "/more"} target="_blank" fontSize={12}>Plus One More</Anchor>:
+                  with longer and more challenging words!
+                </DefaultText>
+              }
+              { config.gameName == "Plus One More" &&
+                <DefaultText marginTop={8}>
+                  If you're looking for something shorter,
+                  try the original <Anchor href={config.siteUrl} target="_blank" fontSize={12}>Plus One</Anchor>:
+                  with shorter puzzles and everyday words!
+                </DefaultText>
+              }              
 
               <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginVertical={16}>
                 SCORING

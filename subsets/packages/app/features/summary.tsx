@@ -74,7 +74,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
             }
             share.push(row);
         })
-        share.push(config.apiProdUrl)
+        share.push(config.siteUrl + config.sitePath)
         copyToClipboard(share.join("\n"));
     }
 

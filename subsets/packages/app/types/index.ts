@@ -72,9 +72,10 @@ export interface ScoringRange {
 
 export interface GameSettings {
   siteUrl: string,
-  anagramIndex: number,
+  sitePath: string,
   apiPath: string,
   gameName: string,
+  anagramIndex: number,
   scoreRanges: ScoringRange[],
   exampleText: ExampleText,
   logoImagePath: string,
