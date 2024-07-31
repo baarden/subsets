@@ -61,7 +61,7 @@ const Drawer: React.FC<DrawerProps> = ({ visible, onClose, config }) => {
                 </DefaultText>
               </XStack>
               <DefaultText marginTop={8}>
-                If the starting word is "{config.exampleText.startWord}", the answers could look like this:
+                If the starting word is &ldquo;{config.exampleText.startWord}&rdquo;, the answers could look like this:
               </DefaultText>
               <YStack alignItems="center" width="100%">
                 <Image src={config.fullExampleImagePath} alt="Full example" width={292} height={218} marginVertical={8}/>
@@ -91,7 +91,7 @@ const Drawer: React.FC<DrawerProps> = ({ visible, onClose, config }) => {
               </XStack>
 
               <DefaultText marginTop={8}>
-                For the third word, you could guess "{config.exampleText.exampleWord}" to get clues:
+                For the third word, you could guess &ldquo;{config.exampleText.exampleWord}&rdquo; to get clues:
               </DefaultText>
               <YStack alignItems="center" width="100%">
                 <Image src={config.exampleImagePath} alt="Example" width={205} height={42} marginVertical={8}/>
@@ -108,7 +108,7 @@ const Drawer: React.FC<DrawerProps> = ({ visible, onClose, config }) => {
                 <DefaultText fontWeight="bold">{config.exampleText.nonLetters}</DefaultText>
                 : not in the word in any square.
               </DefaultText>
-              <DefaultText marginTop={8}>The last square isn't used, and doesn't provide a clue.</DefaultText>
+              <DefaultText marginTop={8}>The last square isn&rsquo;t used, and doesn&rsquo;t provide a clue.</DefaultText>
 
               <DefaultText textAlign='center' fontWeight="bold" backgroundColor="$blue4Light" marginTop={16}>
                 SOLUTION
@@ -127,7 +127,7 @@ const Drawer: React.FC<DrawerProps> = ({ visible, onClose, config }) => {
               </XStack>
 
               <DefaultText marginTop={8}>
-                With the clue below you might guess "{config.exampleText.anagram}":
+                With the clue below you might guess &ldquo;{config.exampleText.anagram}&rdquo;:
               </DefaultText>
               <YStack alignItems="center" width="100%">
                 <Image src="/anagram.png" alt="Example" width={304} height={358} marginTop={8}/>
@@ -139,14 +139,14 @@ const Drawer: React.FC<DrawerProps> = ({ visible, onClose, config }) => {
 
               { config.gameName == "Plus One" &&
                 <DefaultText marginTop={8}>
-                  If you're looking for something harder, 
+                  If you&rsquo;re looking for something harder, 
                   try <Anchor href={config.siteUrl + "/more"} target="_blank" fontSize={12}>Plus One More</Anchor>:
                   with longer and more challenging words!
                 </DefaultText>
               }
               { config.gameName == "Plus One More" &&
                 <DefaultText marginTop={8}>
-                  If you're looking for something shorter,
+                  If you&rsquo;re looking for something shorter,
                   try the original <Anchor href={config.siteUrl} target="_blank" fontSize={12}>Plus One</Anchor>:
                   with shorter puzzles and everyday words!
                 </DefaultText>
@@ -158,8 +158,9 @@ const Drawer: React.FC<DrawerProps> = ({ visible, onClose, config }) => {
               {
                 config.scoreRanges.map((range: ScoringRange, index: number) => {
                   const rangeText = (range.max === Infinity) ? `${range.min}+` : `${range.min}-${range.max}`;
+                  const key = `scoreRange${index}`;
                   return (
-                    <DefaultText>
+                    <DefaultText key={key}>
                       <DefaultText fontWeight="bold">{rangeText} guesses: </DefaultText>
                       {range.message}
                     </DefaultText>

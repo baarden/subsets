@@ -65,46 +65,44 @@ const Square: React.FC<SquareProps> = ({
 
   return (
     <Stack>
-
-    <Stack
-      width={squareWidth}
-      height={squareHeight}
-      backgroundColor={getBackgroundColor()}
-      borderColor={getBorderColor()}
-      borderWidth={getBorderWidth()}
-      borderRadius={5}
-      marginVertical={squareMargin}
-      marginHorizontal={ normalWidth ? squareMargin : squareMargin / 2 }
-      cursor={'pointer'}
-      alignItems="center"
-      justifyContent="center"
-      display="flex"
-      onPress={onPress}
-      zIndex={2}
-    >
-      <Text position='absolute'
-        zIndex={5}
-        color={'black'}
-        fontSize={18}
-        fontWeight={normalWidth ? "bold" : "unset"}
-      >
-        {letter.toUpperCase()}
-      </Text>
-    </Stack>
-
-    { isSwapState && ! isEditable &&
       <Stack
-        position='absolute'
-        top={1}
-        left={1}
-        backgroundColor="$blue7Light"
-        borderRadius={6}
-        height={squareHeight + 4}
-        width={squareWidth + 4}
-        zIndex={1}
-      />
-    }
+        width={squareWidth}
+        height={squareHeight}
+        backgroundColor={getBackgroundColor()}
+        borderColor={getBorderColor()}
+        borderWidth={getBorderWidth()}
+        borderRadius={5}
+        marginVertical={squareMargin}
+        marginHorizontal={ normalWidth ? squareMargin : squareMargin / 2 }
+        cursor={'pointer'}
+        alignItems="center"
+        justifyContent="center"
+        display="flex"
+        onPress={onPress}
+        zIndex={2}
+      >
+        <Text position='absolute'
+          zIndex={5}
+          color={'black'}
+          fontSize={18}
+          fontWeight={normalWidth ? "bold" : "unset"}
+        >
+          {letter.toUpperCase()}
+        </Text>
+      </Stack>
 
+      { isSwapState && ! isEditable &&
+        <Stack
+          position='absolute'
+          top={1}
+          left={1}
+          backgroundColor="$blue7Light"
+          borderRadius={6}
+          height={squareHeight + 4}
+          width={squareWidth + 4}
+          zIndex={1}
+        />
+      }
     </Stack>
   )
 }

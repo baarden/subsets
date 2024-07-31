@@ -1,7 +1,5 @@
 import { useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import { Stack, XStack, YStack, Button, Text } from 'tamagui';
-import { tokens } from '@tamagui/config/v3';
-import { Variable } from '@my/ui';
 import LottieView from 'lottie-react-native';
 import { Clue } from 'app/types/'
 
@@ -78,7 +76,7 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
     enableKey,
   }));
 
-  const buttonContents = (keyIdentifier: string, letter: string, rowIndex: number, buttonWidth: number) => {
+  const buttonContents = (keyIdentifier: string, letter: string, rowIndex: number) => {
     const status: KeyStatus = keyStates[keyIdentifier];
     if (status.active || !keyIdentifier.startsWith("keyENTER")) {
       return (
@@ -113,38 +111,42 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
 
   return (
     <YStack alignItems="center" gap={5} style={{ marginTop: 8 }}>
-      {layout.map((row, rowIndex) => (
-        <XStack key={"keyrow" + rowIndex} gap={5}>
-          {row.map((letter, columnIndex) => {
-            const keyIdentifier = `key${letter}_${rowIndex}_${columnIndex}`;
-            if (!(keyIdentifier in keyStates)) { return; }
-            const status = keyStates[keyIdentifier];
-            const buttonWidth = rowIndex == 1 ? 75 : 40
-            return (
-              <Button
-                key={keyIdentifier}
-                onPress={() => handleKeyPress(keyIdentifier, letter)}
-                style={{
-                  width: buttonWidth,
-                  height: buttonHeight,
-                  padding: 0,
-                  marginHorizontal: 0.5,
-                  borderRadius: 4,
-                  borderColor: "$gray8Light",
-                  borderWidth: 1,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  backgroundColor: status.active ? "$gray6Light" : "$gray9Light"
-                }}
-              >
-                {buttonContents(keyIdentifier, letter, rowIndex, buttonWidth)}
-              </Button>
-            );
-          })}
-        </XStack>
-      ))}
+      {layout.map((row, rowIndex) => {
+        const stackKey = "keyrow" + rowIndex;
+        return (
+          <XStack key={stackKey} gap={5}>
+            {row.map((letter, columnIndex) => {
+              const keyIdentifier = `key${letter}_${rowIndex}_${columnIndex}`;
+              if (!(keyIdentifier in keyStates)) { return; }
+              const status = keyStates[keyIdentifier];
+              const buttonWidth = rowIndex == 1 ? 75 : 40
+              return (
+                <Button
+                  key={keyIdentifier}
+                  onPress={() => handleKeyPress(keyIdentifier, letter)}
+                  style={{
+                    width: buttonWidth,
+                    height: buttonHeight,
+                    padding: 0,
+                    marginHorizontal: 0.5,
+                    borderRadius: 4,
+                    borderColor: "$gray8Light",
+                    borderWidth: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: status.active ? "$gray6Light" : "$gray8Light"
+                  }}
+                >
+                  {buttonContents(keyIdentifier, letter, rowIndex)}
+                </Button>
+              );
+            })}
+          </XStack>
+        )
+      })}
     </YStack>
   );
 });
 
+Keyboard.displayName = 'Keyboard';
 export default Keyboard;

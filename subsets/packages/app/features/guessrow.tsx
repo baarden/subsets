@@ -1,12 +1,10 @@
-import { useState } from 'react';
 import { XStack } from 'tamagui'
 import { ChevronsUpDown } from '@tamagui/lucide-icons'
-import Square from './square'
+import Square from 'app/features/square'
 import { Guess, Clue, GuessState, GameSettings } from 'app/types/'
 
 interface GuessRowProps {
   guess: Guess
-  style?: any
   isAnagramGuess: boolean
   isEditable: boolean
   isSwapState: boolean
@@ -19,11 +17,11 @@ interface GuessRowProps {
   config: GameSettings
   onRowPress?: () => void
   onSquareSelect?: (index: number) => void
+  animation: string
 }
 
 const GuessRow: React.FC<GuessRowProps> = ({
   guess,
-  style,
   isAnagramGuess,
   isEditable,
   isSwapState,
@@ -35,9 +33,8 @@ const GuessRow: React.FC<GuessRowProps> = ({
   keyPrefix,
   config,
   onRowPress = null,
-  onSquareSelect = null
+  onSquareSelect = null,
 }) => {
-
   const extraLetterIndex = config.anagramIndex - 1
   const extraLetter: boolean = (guess.wordIndex === extraLetterIndex)
   let offset = guess.length
@@ -58,16 +55,14 @@ const GuessRow: React.FC<GuessRowProps> = ({
       onSquareSelect(index);
     }
   }
-
   return (
     <XStack
       flexDirection="row"
       style={{
         position: 'relative',
         marginLeft: leftPad,
-        ...style,
+        display: 'flex'
       }}
-      animation="medium"
       backgroundColor="$gray3Light"
       onPress={onRowPress || undefined}
     >
@@ -78,24 +73,25 @@ const GuessRow: React.FC<GuessRowProps> = ({
           highlighted = true;
           hLetter = "";
         }
+        const key = keyPrefix + '_square' + index + '_' + guess.key
         return (
           <Square
-          key={keyPrefix + '_square' + index + '_' + guess.key}
-          letter={showLetters ? clue.letter : ''}
-          clueType={clue.clueType}
-          dimension={squareDim}
-          isAnagramGuess={isAnagramGuess}
-          isAnagramLetter={isAnagramGuess && (highlighted || extraLetter)}
-          isHighlighted={highlighted}
-          isEditable={isEditable && index === editableIndex}
-          isSwapState={isSwapState}
-          onPress={() => handleSquarePress(index)}
-        />
+            key={key}
+            letter={showLetters ? clue.letter : ''}
+            clueType={clue.clueType}
+            dimension={squareDim}
+            isAnagramGuess={isAnagramGuess}
+            isAnagramLetter={isAnagramGuess && (highlighted || extraLetter)}
+            isHighlighted={highlighted}
+            isEditable={isEditable && index === editableIndex}
+            isSwapState={isSwapState}
+            onPress={() => handleSquarePress(index)}
+          />
         )})
       }
       {
         guess.state === GuessState.Solved && guess.wordIndex > 0 && hasHiddenRows &&
-        <ChevronsUpDown size="$1" marginTop={12} color="$gray9Light" />
+        <ChevronsUpDown size="$1" marginTop={12} color="$gray9Light"/>
       }
     </XStack>
   )

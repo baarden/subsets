@@ -3,7 +3,7 @@ import { Platform } from 'react-native'
 import Clipboard from '@react-native-clipboard/clipboard'
 import { YStack, XStack, Stack, Button, Image, Text, ScrollView, styled } from 'tamagui';
 import { XCircle, Share } from '@tamagui/lucide-icons';
-import { Status, Guess, Clue, ClueType, Statistics, GameSettings } from '../types/';
+import { Status, Guess, Clue, ClueType, Statistics, GameSettings } from 'app/types/';
 
 const blueSquare = "\ud83d\udfe6";
 const redSquare = "\ud83d\udfe5";
@@ -47,7 +47,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
         if (!status) { return }
         let share: string[] = [`Plus One in ${status.guesses.length - 2}!`];
         const guesses = [...status.guesses].sort((a, b) => a.key - b.key)
-        guesses.forEach((value: Guess, index: number) => {
+        guesses.forEach((value: Guess) => {
             const wordIdx = value.wordIndex;
             if (wordIdx === startWordIndex || wordIdx === extraLetterIndex) { return; }
             let row: string = "";
@@ -56,7 +56,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
             for (let i:number = 0; i < indent; i++) {
                 row += whiteSquare;
             }
-            value.characters.map((value: Clue, index: number) => {
+            value.characters.map((value: Clue) => {
                 switch (value.clueType) {
                     case ClueType.AllCorrect:
                         row += blueSquare;

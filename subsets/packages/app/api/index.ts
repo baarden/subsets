@@ -1,5 +1,4 @@
-import { config } from '@my/ui';
-import { Status, ClueType, Clue, Guess, GuessState, emptyGuess, Statistics, GameSettings } from '../types/'
+import { Status, ClueType, Clue, Guess, GuessState, emptyGuess, Statistics, GameSettings } from 'app/types/'
 
 export class ConflictError extends Error {
   constructor(message: string) {
@@ -12,7 +11,6 @@ const baseUrl = (config: GameSettings): string => {
   const server = (process.env.NODE_ENV === 'development') ? 
     'http://localhost:8080' : config.siteUrl;
   const url = server + config.apiPath;
-  console.log(`API URL: ${url}`);
   return url;
 }
 
