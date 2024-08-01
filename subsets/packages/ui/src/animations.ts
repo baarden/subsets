@@ -1,5 +1,29 @@
-import { createAnimations } from '@tamagui/animations-react-native'
+//import { createAnimations } from '@tamagui/animations-react-native'
+import { createAnimations } from '@tamagui/animations-moti'
 
+
+export const animations: any = createAnimations({
+  fast: {
+    type: 'spring',
+    damping: 20,
+    mass: 1.2,
+    stiffness: 250,
+  },
+  medium: {
+    type: 'spring',
+    damping: 20,
+    mass: 0.9,
+    stiffness: 100,
+    overshootClamping: true
+  },
+  slow: {
+    type: 'spring',
+    damping: 20,
+    stiffness: 60,
+  },
+});
+
+/*
 export const animations = createAnimations({
   '100ms': {
     type: 'timing',
@@ -34,3 +58,4 @@ export const animations = createAnimations({
     stiffness: 100,
   },
 })
+*/

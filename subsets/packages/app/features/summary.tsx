@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Platform } from 'react-native'
 import Clipboard from '@react-native-clipboard/clipboard'
-import { YStack, XStack, Stack, Button, Image, Text, ScrollView, styled } from 'tamagui';
+import { YStack, XStack, Stack, Button, Image, Text, ScrollView, AnimatePresence, styled } from 'tamagui';
 import { XCircle, Share } from '@tamagui/lucide-icons';
 import { Status, Guess, Clue, ClueType, Statistics, GameSettings } from 'app/types/';
 
@@ -90,11 +90,12 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
         }
     };
           
-    if (!visible) return null
-
   return (
     <Stack themeInverse={true} position="absolute" top={0} left={0} right={0} bottom={0} zIndex={1000}>
-      <Stack
+    <AnimatePresence>
+        {visible && (
+        <Stack
+        key="summaryBackground"
         position="absolute"
         top={0}
         left={0}
@@ -102,8 +103,17 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
         bottom={0}
         backgroundColor="rgba(0, 0, 0, 0.5)"
         onPress={onClose}
+        animation={'medium'}
+        enterStyle={{opacity: 0.0}}
+        exitStyle={{opacity: 0.0}}
+        opacity={1.0}
       />
+        )}
+        </AnimatePresence>
+        <AnimatePresence>
+        {visible && (
         <YStack
+            key="summaryModal"
             position="absolute"
             bottom={0}
             left={0}
@@ -116,6 +126,9 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
             borderTopLeftRadius={16}
             borderTopRightRadius={16}
             padding={16}
+            animation={'medium'}
+            enterStyle={{height: "0%"}}
+            exitStyle={{height: "0%"}}
         >
             <YStack alignItems="center" width="100%">
                 <Image src={config.logoImagePath} alt="Subsets" width={82} height={59} />
@@ -156,7 +169,9 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
                 </YStack>
             </ScrollView>
       </YStack>
-    </Stack>
+        )}
+      </AnimatePresence>
+      </Stack>
   )
 }
 

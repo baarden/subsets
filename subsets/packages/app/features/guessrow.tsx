@@ -8,6 +8,7 @@ interface GuessRowProps {
   isAnagramGuess: boolean
   isEditable: boolean
   isSwapState: boolean
+  isVisible: boolean
   editableIndex?: number
   parentWidth: number
   showLetters: boolean
@@ -17,7 +18,6 @@ interface GuessRowProps {
   config: GameSettings
   onRowPress?: () => void
   onSquareSelect?: (index: number) => void
-  animation: string
 }
 
 const GuessRow: React.FC<GuessRowProps> = ({
@@ -25,6 +25,7 @@ const GuessRow: React.FC<GuessRowProps> = ({
   isAnagramGuess,
   isEditable,
   isSwapState,
+  isVisible,
   editableIndex = null,
   parentWidth,
   squareDim,
@@ -33,10 +34,12 @@ const GuessRow: React.FC<GuessRowProps> = ({
   keyPrefix,
   config,
   onRowPress = null,
-  onSquareSelect = null,
+  onSquareSelect = null
 }) => {
   const extraLetterIndex = config.anagramIndex - 1
   const extraLetter: boolean = (guess.wordIndex === extraLetterIndex)
+  const rowOpacity = isVisible ? 1 : 0
+  const rowHeight = isVisible ? squareDim : 0
   let offset = guess.length
   if (extraLetter) {
     offset = 1
@@ -58,14 +61,15 @@ const GuessRow: React.FC<GuessRowProps> = ({
   return (
     <XStack
       flexDirection="row"
-      style={{
-        position: 'relative',
-        marginLeft: leftPad,
-        display: 'flex'
-      }}
+      enterStyle={{height: 0, opacity: 0}}
+      height={rowHeight}
+      opacity={rowOpacity}
+      marginLeft={leftPad}
       backgroundColor="$gray3Light"
       onPress={onRowPress || undefined}
-    >
+      animation={'medium'}
+      animateOnly={['height', 'opacity']}
+      >
       {guess.characters.map((clue: Clue, index: number) => {
         let highlighted = false;
         if (clue.letter === hLetter && guess.state === GuessState.Solved
