@@ -32,7 +32,7 @@ export default class Document extends NextDocument {
           }),
         }}
       />,
-      <style jsx global>{`
+      <style key="html-font" jsx global>{`
         html {
           font-family: 'Inter';
         }
