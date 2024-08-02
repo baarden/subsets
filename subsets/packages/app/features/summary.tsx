@@ -91,10 +91,11 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
     };
           
   return (
-    <Stack themeInverse={true} position="absolute" top={0} left={0} right={0} bottom={0} zIndex={1000}>
+    <Stack themeInverse={true} position="absolute" top={0} left={0} right={0} bottom={0}>
     <AnimatePresence>
         {visible && (
         <Stack
+        zIndex={1000}
         key="summaryBackground"
         position="absolute"
         top={0}
@@ -113,6 +114,7 @@ export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
         <AnimatePresence>
         {visible && (
         <YStack
+            zIndex={1001}
             key="summaryModal"
             position="absolute"
             bottom={0}
