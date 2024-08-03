@@ -1,9 +1,9 @@
 import { Metadata } from 'next'
-import { NextTamaguiProvider } from './NextTamaguiProvider'
+import { NextTamaguiProvider } from '../NextTamaguiProvider'
 
 export const metadata: Metadata = {
-  title: 'Plus One',
-  description: 'The Plus One word game',
+  title: 'Plus One More',
+  description: 'The Plus One More word game',
   icons: '/favicon.ico',
 }
 
