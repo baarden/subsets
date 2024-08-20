@@ -3,13 +3,14 @@ import { ScrollView as RNScrollVIew } from 'react-native'
 import { YStack, Text, ScrollView, Stack, Theme } from 'tamagui'
 import TitleBar from 'app/features/titlebar'
 import GuessRow from 'app/features/guessrow'
+import EditRow from 'app/features/editrow'
 import Keyboard, { KeyboardHandles } from 'app/features/keyboard'
 import Drawer from 'app/features/drawer'
 import SummaryDrawer from 'app/features/summary'
 import { fetchStatus, submitGuess, fetchStats, ConflictError } from 'app/api'
 import { Dimension, useResponsiveDimensions } from 'app/hooks/useResponsiveDimensions'
 import {
-  GuessState, Status, Guess, GameState, emptyGuess, Clue, ClueType,
+  GuessState, Status, Guess, GameState, emptyGuess, Clue, ClueType, Letter,
   Statistics, GameSettings, ScoringRange, ExampleText, KeyboardAction
 } from 'app/types/'
 
@@ -89,12 +90,13 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
   const [error, setError] = useState<string>('')
   const [guessCount, setGuessCount] = useState<number>(0)
   const [swapState, setSwapState] = useState<boolean>(false)
+  const [editRowChars, setEditRowChars] = useState<string[]>([]);
+  const [editRowPlusOneChars, setEditRowPlusOneChars] = useState<string[]>([]);
 
   const config = (path === "/more") ? plusOneMoreSettings : plusOneSettings;
   const extraLetterIndex: number = config.anagramIndex - 1
   const keyboardRef = useRef<KeyboardHandles>(null);
   const scrollViewRef = useRef<RNScrollVIew>(null);
-  const showLetters = true;
   const hideRows = false;
   const orderByPosition = false;
   const editable = true;
@@ -137,8 +139,7 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
     setEditableIndex(0)
 
     const prevGuess = statusData.guesses.slice(-1)[0]
-    var nextGuess = statusData.nextGuess
-    setCurrentGuess(nextGuess)
+    const nextGuess = initializeCurrentGuess(statusData.nextGuess, statusData.guesses, statusData.characters);
     const extraGuesses = (statusData.state === GameState.Solved || statusData.nextGuess.wordIndex === config.anagramIndex) ? 2 : 1;
     const guesses = statusData.guesses.length - extraGuesses
     setGuessCount(guesses)
@@ -179,6 +180,33 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
       refWord
     )
     setKeyboardLayout(keys)
+  }
+
+  const initializeCurrentGuess = (nextGuess: Guess, guesses: Guess[], chars: string[]): Guess => {
+    const refWord: Guess | undefined = guesses.find(g => g.wordIndex === nextGuess.wordIndex - 1 && g.state === GuessState.Solved);
+    if (refWord === undefined) { return nextGuess; }
+    const refChars = refWord.guessWord.split('').sort();
+    let plusOneChars = [...chars];
+    refChars.forEach(c => {
+      const idx = plusOneChars.indexOf(c);
+      if (idx !== -1) {
+        plusOneChars.splice(idx, 1);
+      }
+    });
+    setEditRowChars(refChars);
+    setEditRowPlusOneChars(plusOneChars);
+
+    let newCharacters: Clue[] = refChars.map(c => {
+      return {letter: c, clueType: ClueType.Empty};
+    })
+    newCharacters.push({letter: "", clueType: ClueType.Empty});
+    const guess = { 
+      ...nextGuess,
+      characters: newCharacters
+    };
+    setCurrentGuess(guess);
+
+    return guess;
   }
 
   const displaySummary = (guesses: number) => {
@@ -465,40 +493,47 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
     />
   );
 
+  const handleMoveSquare = (oldIndex: number, newIndex: number) => {
+    let clues = structuredClone(currentGuess.characters);
+    const insIndex = (oldIndex > newIndex) ? newIndex : newIndex + 1;
+    clues.splice(insIndex, 0, currentGuess.characters[oldIndex]);
+    const delIndex = (newIndex > oldIndex) ? oldIndex : oldIndex + 1;
+    clues.splice(delIndex, 1);
+    let chars = structuredClone(currentGuess.characters);
+    for (let i = 0; i < chars.length; i++) {
+      chars[i].letter = clues[i].letter;
+      chars[i].clueType = clues[i].clueType;
+    }
+    const newGuess = {
+      ...currentGuess,
+      characters: chars
+    }
+    setCurrentGuess(newGuess);
+  };
+
   interface RenderGuessRowArgs {
     guess: Guess;
     key: string;
     squareDim: number;
     parentWidth: number;
-    showLetters: boolean;
     hasHiddenRows: boolean;
     keyPrefix: string;
-    isEditable: boolean;
-    isSwapState: boolean;
     isVisible: boolean;
-    editableIndex: number | undefined;
   }
 
   const renderGuessRow = (
-    { guess, key, squareDim, parentWidth, showLetters, hasHiddenRows, keyPrefix,
-      isEditable, isSwapState, isVisible, editableIndex }: RenderGuessRowArgs
+    { guess, key, squareDim, parentWidth, hasHiddenRows, keyPrefix, isVisible }: RenderGuessRowArgs
   ) => {
     return (
       <GuessRow
         key={key}
         guess={guess}
-        onRowPress={() => toggleVisibility(guess.wordIndex)}
-        isAnagramGuess={status?.state == GameState.Solved || (status?.nextGuess.wordIndex === config.anagramIndex && guess.wordIndex < config.anagramIndex)}
-        isEditable={isEditable}
-        isSwapState={isSwapState}
         isVisible={isVisible}
-        editableIndex={editableIndex}
-        onSquareSelect={isEditable ? handleSquareSelected : undefined}
         parentWidth={parentWidth}
-        showLetters={showLetters}
         hasHiddenRows={hasHiddenRows}
         keyPrefix={keyPrefix}
         squareDim={squareDim}
+        onRowPress={() => toggleVisibility(guess.wordIndex)}
         config={config}
       />
     );
@@ -507,7 +542,6 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
   const renderGuessRows = (
     squareDim: number,
     parentWidth: number,
-    showLetters: boolean,
     showRows: boolean,
     orderByKey: boolean,
     keyPrefix: string
@@ -552,30 +586,12 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
               key: key,
               squareDim: squareDim,
               parentWidth: parentWidth,
-              showLetters: showLetters,
               hasHiddenRows: hasHiddenRows,
               keyPrefix: keyPrefix,
-              isEditable: false,
-              isSwapState: false,
-              isVisible: isVisible,
-              editableIndex: -1
-            })
+              isVisible: isVisible
+            });
         })}
         {currentGuess.wordIndex === config.anagramIndex && renderSpacer()}
-        {renderGuessRow({
-          guess: currentGuess,
-          key: "guessrow_entry",
-          squareDim: squareDim,
-          parentWidth: parentWidth,
-          showLetters: showLetters,
-          hasHiddenRows: false,
-          keyPrefix: "main",
-          isEditable: true,
-          isSwapState: swapState,
-          isVisible: true,
-          editableIndex: editableIndex
-        })
-        }
       </YStack>
     );
   }
@@ -632,8 +648,18 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
           zIndex={1}
         >
           {
-            renderGuessRows(squareWidth, screenDim.width, showLetters, hideRows, orderByPosition, "main")
+            renderGuessRows(squareWidth, screenDim.width, hideRows, orderByPosition, "main")
           }
+          <EditRow
+            clues={editRowChars}
+            plusOnes={editRowPlusOneChars}
+            parentWidth={screenDim.width}
+            isAnagramGuess={status?.state == GameState.Solved || (status?.nextGuess.wordIndex === config.anagramIndex && currentGuess.wordIndex < config.anagramIndex)}
+            keyPrefix="main"
+            squareDim={squareWidth}
+            config={config}
+            onMoveSquare={handleMoveSquare}
+          />
           {(status?.state == GameState.Unsolved && status.nextGuess.wordIndex == config.anagramIndex) &&
             <YStack alignItems='center' width="100%" marginVertical={8}>
               <Text fontWeight='bold' fontSize={12}>CLUE: “{status.clueWord}”</Text>

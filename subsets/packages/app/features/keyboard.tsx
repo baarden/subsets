@@ -88,11 +88,12 @@ const Keyboard = forwardRef<KeyboardHandles, KeyboardProps>(({ layout, refWord, 
               position='absolute'
               top={-1}
               color="$blue7Light"
+              userSelect='none'
             >
               +
             </Text>
           }
-          <Text color='black' style={{ fontSize: letter === 'ENTER' ? 12 : 16 }} position='absolute' paddingTop={5}>
+          <Text color='black' style={{ fontSize: letter === 'ENTER' ? 12 : 16 }} position='absolute' paddingTop={5} userSelect='none'>
             {letter}
           </Text>
         </>
