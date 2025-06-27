@@ -18,3 +18,11 @@ To run the app in production, issue these two commands from `/subsets`:
 
 - yarn web:prod
 - yarn web:prod:serve
+
+# Setting up the repo
+
+The `CsvToPostgres` app will run the migrations to set up the backend database (use `dotnet run`).
+
+The `SelectSubsets` app will generate puzzles and take feedback to narrow down the search space (use `dotnet run`).
+
+You will need to manually set the `plusone.playdate` values in the Postgres database before the game server can be started.
