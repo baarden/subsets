@@ -1,0 +1,33 @@
+## Added dependencies
+
+apps/expo:
+@react-native-async-storage/async-storage
+@react-native-clipboard/clipboard
+lottie-react-native
+react-native-reanimated
+@tamagui/animations-moti
+
+/: prod
+expo-modules-core
+
+/: dev
+eslint
+@typescript-eslint/eslint-plugin
+@typescript-eslint/parser
+eslint-plugin-react
+eslint-plugin-react-native
+@next/eslint-plugin-next
+
+
+## Config changes
+
+apps/expo/babel.config.js: uncomment reanimated line
+
+## Code replacement
+
+apps/expo/app/index.tsx
+apps/next/app: delete layout.tsx, page.tsx, user/
+apps/next/app: add (plusone)/, more/
+packages/app/features/
+packages/app: +api, +assets, +hooks, +types
+packages/ui/src/animations.ts

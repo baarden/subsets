@@ -1,0 +1,180 @@
+import { useState } from 'react'
+import { Platform } from 'react-native'
+import Clipboard from '@react-native-clipboard/clipboard'
+import { YStack, XStack, Stack, Button, Image, Text, ScrollView, AnimatePresence, styled } from 'tamagui';
+import { XCircle, Share } from '@tamagui/lucide-icons';
+import { Status, Guess, Clue, ClueType, Statistics, GameSettings } from 'app/types/';
+
+const blueSquare = "\ud83d\udfe6";
+const redSquare = "\ud83d\udfe5";
+const whiteSquare = "\u2b1c";
+const blackSquare = "\u2b1b";
+const startWordIndex = 0;
+
+const DefaultText = styled(Text, {
+    fontSize: 12,
+    textAlign: "left"
+  })
+
+interface SummaryDrawerProps {
+    feedback: string,
+    statistics?: Statistics,
+    status?: Status,
+    visible: boolean,
+    onClose: () => void,
+    config: GameSettings
+}
+
+export const SummaryDrawer: React.FC<SummaryDrawerProps> = ({
+    feedback,
+    statistics,
+    status,
+    visible,
+    onClose,
+    config
+}) => {
+    if (status === undefined) { return }
+    const [shareText, setShareText] = useState<string>("Share")
+    const extraLetterIndex = config.anagramIndex - 1
+
+    const handleSharePress = () => {
+        shareStatus()
+        setShareText("Copied!")
+        setTimeout(() => setShareText("Share"), 3000)
+    }
+
+    const shareStatus = () => {
+        if (!status) { return }
+        let share: string[] = [`Plus One in ${status.guesses.length - 2}!`];
+        const guesses = [...status.guesses].sort((a, b) => a.key - b.key)
+        guesses.forEach((value: Guess) => {
+            const wordIdx = value.wordIndex;
+            if (wordIdx === startWordIndex || wordIdx === extraLetterIndex) { return; }
+            let row: string = "";
+            const maxIndent = Math.floor((config.anagramIndex + 1) / 2) - 1;
+            const indent = (wordIdx === config.anagramIndex) ? 1 : maxIndent - Math.ceil(wordIdx / 2);
+            for (let i:number = 0; i < indent; i++) {
+                row += whiteSquare;
+            }
+            value.characters.map((value: Clue) => {
+                switch (value.clueType) {
+                    case ClueType.AllCorrect:
+                        row += blueSquare;
+                        break;
+                    case ClueType.CorrectLetter:
+                        row += redSquare;
+                        break;
+                    case ClueType.Incorrect:
+                    case ClueType.Empty:
+                        row += blackSquare;
+                }
+            })
+            for (let i = indent + value.characters.length; i < config.anagramIndex + 1; i++) {
+                row += whiteSquare;
+            }
+            share.push(row);
+        })
+        share.push(config.siteUrl + config.sitePath)
+        copyToClipboard(share.join("\n"));
+    }
+
+    const copyToClipboard = async (text: string) => {
+        if (Platform.OS === 'web') {
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+            }
+        } else {
+            Clipboard.setString(text);
+        }
+    };
+          
+  return (
+    <Stack themeInverse={true} position="absolute" top={0} left={0} right={0} bottom={0}>
+    <AnimatePresence>
+        {visible && (
+        <Stack
+        zIndex={1000}
+        key="summaryBackground"
+        position="absolute"
+        top={0}
+        left={0}
+        right={0}
+        bottom={0}
+        backgroundColor="rgba(0, 0, 0, 0.5)"
+        onPress={onClose}
+        animation={'medium'}
+        enterStyle={{opacity: 0.0}}
+        exitStyle={{opacity: 0.0}}
+        opacity={1.0}
+      />
+        )}
+        </AnimatePresence>
+        <AnimatePresence>
+        {visible && (
+        <YStack
+            zIndex={1001}
+            key="summaryModal"
+            position="absolute"
+            bottom={0}
+            left={0}
+            right={0}
+            height="90%"
+            theme="light"
+            backgroundColor='white'
+            maxWidth={500}
+            marginHorizontal="auto"
+            borderTopLeftRadius={16}
+            borderTopRightRadius={16}
+            padding={16}
+            animation={'medium'}
+            enterStyle={{height: "0%"}}
+            exitStyle={{height: "0%"}}
+        >
+            <YStack alignItems="center" width="100%">
+                <Image src={config.logoImagePath} alt="Subsets" width={82} height={59} />
+                <Button size="$2" icon={XCircle} theme="light" onPress={onClose} position="absolute" right={0} />
+            </YStack>
+            <ScrollView>
+                <YStack padding={16}>
+
+                    <DefaultText fontSize={16} fontWeight={800} marginVertical={16}>
+                        You solved it in {status?.guesses.length - 2}! {feedback}
+                    </DefaultText>
+
+                    <Stack alignItems='center' width="100%">
+                        <Button icon={Share} backgroundColor="$blue4Light" borderWidth={1} width={150} onPress={handleSharePress}>
+                            <DefaultText fontWeight={800} >
+                                {shareText}
+                            </DefaultText>
+                        </Button>
+                    </Stack>
+
+                    <DefaultText marginVertical={8} fontWeight={800}>STATISTICS</DefaultText>
+
+                    <XStack flex={1}>
+                        <YStack flex={1}>
+                            <DefaultText>Played</DefaultText>
+                            <DefaultText>{statistics?.played}</DefaultText>
+                        </YStack>
+                        <YStack flex={1}>
+                            <DefaultText>Solved</DefaultText>
+                            <DefaultText>{statistics?.solved}</DefaultText>
+                        </YStack>
+                        <YStack flex={1}>
+                            <DefaultText>Winning Streak</DefaultText>
+                            <DefaultText>{statistics?.streak}</DefaultText>
+                        </YStack>
+                    </XStack>
+
+                </YStack>
+            </ScrollView>
+      </YStack>
+        )}
+      </AnimatePresence>
+      </Stack>
+  )
+}
+
+export default SummaryDrawer
