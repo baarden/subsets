@@ -1,5 +1,4 @@
-import { HomeScreen } from 'app/features/home/screen'
-import { GameComponent } from 'app/features/game'
+import { GameComponent } from 'app/features/'
 import { Stack } from 'expo-router'
 
 export default function Screen() {
@@ -7,10 +6,10 @@ export default function Screen() {
     <>
       <Stack.Screen
         options={{
-          title: 'Word Delta',
+          title: 'Plus One',
         }}
       />
-      <GameComponent />
+      <GameComponent path=""/>
     </>
   )
 }

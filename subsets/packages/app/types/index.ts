@@ -40,11 +40,11 @@ export interface Guess {
 }
 
 export interface Status {
-  clueWord: string;   // The word used as a clue for the current game
-  guesses: Guess[];   // Array of previous guesses with clues
-  nextGuess: Guess;   // Structure for the next guess (mainly used for its length)
+  clueWord: string; 
+  guesses: Guess[]; 
+  nextGuess: Guess; 
   characters: string[];
-  state: GameState;   // Current state of the game (solved/unsolved)
+  state: GameState;
   indent: number;
   today: string;
 }

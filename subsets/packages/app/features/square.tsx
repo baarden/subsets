@@ -24,8 +24,8 @@ interface SquareProps {
   clueType?: ClueType;
   dimension: number;
   squareIndex: number;
-  dragIndex: number;
-  hoverIndex: number;
+  dragIndex: number | null;
+  hoverIndex: number | null;
   isAnagramGuess: boolean;
   isAnagramLetter: boolean;
   isHighlighted: boolean;
@@ -54,9 +54,6 @@ const Square: React.FC<SquareProps> = ({
   const squareHeight = dimension - 2 * squareMargin
   const normalWidth = !isAnagramGuess || isAnagramLetter
   const squareWidth = (normalWidth) ? squareHeight : 0.5 * squareHeight
-  const animatingShared = useSharedValue(isAnimating);
-  const dragIndexShared = useSharedValue(dragIndex);
-  const hoverIndexShared = useSharedValue(hoverIndex);
 
   const getBackgroundColor = (): Variable => {
     switch (clueType) {
@@ -89,16 +86,16 @@ const Square: React.FC<SquareProps> = ({
   }
   
   const animatedFlexStyle = useAnimatedStyle(() => {
-    const w = (dragIndexShared.value === squareIndex && hoverIndexShared.value !== null) ? 0 : dimension;
-    const o = (dragIndexShared.value === squareIndex) ? 0 : 1;
-    return animatingShared.value ? {
+    const w = (dragIndex === squareIndex && hoverIndex !== null) ? 0 : dimension;
+    const o = (dragIndex === squareIndex) ? 0 : 1;
+    return isAnimating ? {
       width: withSpring(w, mediumSpringConfig),
       opacity: withSpring(o, mediumSpringConfig)
     } : {
       width: w,
       opacity: o
     };
-  }, []);
+  }, [dragIndex, hoverIndex, isAnimating]);
   
   return (
     <Animated.View style={[animatedFlexStyle]}>

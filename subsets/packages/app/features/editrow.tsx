@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect } from 'react'
 import { XStack, AnimatePresence, Text } from 'tamagui'
-import Animated, { useSharedValue, withSpring, useAnimatedStyle, Keyframe, FadeIn } from 'react-native-reanimated'
+import Animated, { useSharedValue, withSpring, useAnimatedStyle, Keyframe, runOnJS, useDerivedValue } from 'react-native-reanimated'
 import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler'
 import Square from 'app/features/square'
 import EmptySquare from 'app/features/emptysquare'
@@ -38,11 +38,12 @@ const EditRow: React.FC<EditRowProps> = ({
   let offset = clues.length + 1
   const leftPad = parentWidth / 2 - offset * squareDim / 2;
   
-  const [animating, setAnimating] = useState<boolean>(true);
-  const [dragIndexState, setDragIndexState] = useState<number | null>(null);
+  const animatingShared = useSharedValue<boolean>(true);
+  const animatingDerived = useDerivedValue<boolean>(() => { return animatingShared.value; });
   const dragIndexShared = useSharedValue<number | null>(null);
-  const [hoverIndexState, setHoverIndexState] = useState<number | null>(null);
+  const dragIndexDerived = useDerivedValue<number | null>(() => { return dragIndexShared.value; })
   const hoverIndexShared = useSharedValue<number | null>(null);
+  const hoverIndexDerived = useDerivedValue<number | null>(() => { return hoverIndexShared.value; })
   const translateX = useSharedValue<number>(0);
   const translateY = useSharedValue<number>(0);
   const initialX = useSharedValue<number>(0);
@@ -72,10 +73,10 @@ const EditRow: React.FC<EditRowProps> = ({
 
   useEffect(() => {
     setTimeout(() => {
-      setAnimating(true);
+//      animatingShared.value = true;
       console.log("animation enabled");  
     }, 2000);
-  }, [animating]);
+  }, [animatingDerived.value]);
 
   const calculateGapSpans = (hoverIdx: number | null): hoverSpan[] => {
     let spans: hoverSpan[] = [];
@@ -99,13 +100,12 @@ const EditRow: React.FC<EditRowProps> = ({
         if (span.index === null) { break; }
         if (span.index === hoverIdx) { return; }
         if (span.index === dragIdx || span.index === dragIdx + 1) { break; }
-        setHoverIndexState(span.index);
         hoverIndexShared.value = span.index;
+        console.log(`New index: ${span.index}`);
         return;
       }
     }
     if (hoverIdx !== null) {
-      setHoverIndexState(null);
       hoverIndexShared.value = null;
     }
   };
@@ -113,7 +113,7 @@ const EditRow: React.FC<EditRowProps> = ({
   const createPanGesture = (index: number, initialPositionX: number) => {
     return Gesture.Pan()
       .onBegin((event) => {
-        setDragIndexState(index);
+//        animatingShared.value = true;
         dragIndexShared.value = index;
         initialX.value = event.absoluteX - initialPositionX;
         translateX.value = initialPositionX + squareMargin;
@@ -124,7 +124,7 @@ const EditRow: React.FC<EditRowProps> = ({
         translateY.value = 10;
       })
       .onEnd(() => {
-        setAnimating(false);
+//        animatingShared.value = false;
         console.log("animation disabled");
         let hoverIdx = hoverIndexShared.value;
         if (dragIndexShared.value !== null && hoverIdx !== null) {
@@ -138,10 +138,10 @@ const EditRow: React.FC<EditRowProps> = ({
           endPosition + squareMargin,
           mediumAnimation,
           () => {
-            setDragIndexState(null);
             dragIndexShared.value = null;
-            setHoverIndexState(null);
             hoverIndexShared.value = null;
+//            animatingShared.value = true;
+            console.log("animation enabled");
           }
         );
         translateY.value = withSpring(0, mediumAnimation);
@@ -149,23 +149,18 @@ const EditRow: React.FC<EditRowProps> = ({
   };
 
   const handleMoveSquare = (oldIndex: number, newIndex: number) => {
-    let letters = structuredClone(guess);
-    const insIndex = (oldIndex > newIndex) ? newIndex : newIndex + 1;
-    const delIndex = (newIndex > oldIndex) ? oldIndex : oldIndex + 1;
-    letters.splice(insIndex, 0, guess[oldIndex]);
-    letters.splice(delIndex, 1);
-    let newGuess = structuredClone(guess);
-    for (let i=0; i < guess.length; i++) {
-      newGuess[i].char = letters[i].char;
-      newGuess[i].isPlusOne = letters[i].isPlusOne;
+    'worklet';
+    const newGuess: Letter[] = [...guess];
+    const adjustedNewIndex = oldIndex < newIndex ? newIndex - 1 : newIndex;
+    const letterToMove = newGuess[oldIndex];
+    newGuess.splice(oldIndex, 1);    
+    newGuess.splice(adjustedNewIndex, 0, letterToMove);
+    runOnJS(setGuess)(newGuess);
+  
+    if (onMoveSquare) {
+      runOnJS(onMoveSquare)(oldIndex, newIndex);
     }
-    console.log(guess);
-    console.log(newGuess);
-    setGuess(newGuess);
-
-    if (onMoveSquare === null) { return; }
-    onMoveSquare(oldIndex, newIndex);
-  }
+  };  
 
   const renderCharacters = () => {
     if (guess.length === 0) { return; }
@@ -173,20 +168,25 @@ const EditRow: React.FC<EditRowProps> = ({
       const squareKey = keyPrefix + '_square' + index;
       const gapKey = keyPrefix + '_gap' + index;
       const gap = (
-        <EmptySquare key={gapKey} isHoverTarget={index === hoverIndexState} squareDim={squareDim} animating={animating} />
+        <EmptySquare
+          key={gapKey}
+          isHoverTarget={index === hoverIndexDerived.value}
+          squareDim={squareDim}
+          animating={animatingDerived.value}
+        />
       );
       const squareProps = {
         letter: letter.char,
         clueType: ClueType.Empty,
         dimension: squareDim,
         squareIndex: index,
-        dragIndex: dragIndexState,
-        hoverIndex: hoverIndexState,
+        dragIndex: dragIndexDerived.value,
+        hoverIndex: hoverIndexDerived.value,
         isAnagramGuess: isAnagramGuess,
         isAnagramLetter: false,
         isHighlighted: false,
         isSwapState: false,
-        isAnimating: animating,
+        isAnimating: animatingDerived.value,
         onPress: () => {},
       };
       const square = (
@@ -236,17 +236,21 @@ const EditRow: React.FC<EditRowProps> = ({
           backgroundColor="$gray3Light"
         >
           {renderCharacters()}
-          <EmptySquare isHoverTarget={guess.length === hoverIndexState} squareDim={squareDim} animating={animating} />
+          <EmptySquare
+            isHoverTarget={guess.length === hoverIndexDerived.value}
+            squareDim={squareDim}
+            animating={animatingDerived.value}
+          />
         </XStack>
       </Animated.View>
       <AnimatePresence>
-        {dragIndexState !== null && (
+        {dragIndexDerived.value !== null && (
           <Animated.View style={[animatedDragStyle]}>
             <Square
-              letter={guess[dragIndexState].char}
+              letter={guess[dragIndexDerived.value].char}
               clueType={ClueType.Empty}
               dimension={squareDim}
-              squareIndex={dragIndexState}
+              squareIndex={dragIndexDerived.value}
               dragIndex={-1}
               hoverIndex={-1}
               isAnagramGuess={false}
@@ -254,7 +258,7 @@ const EditRow: React.FC<EditRowProps> = ({
               isHighlighted={false}
               isEditable={false}
               isSwapState={false}
-              isAnimating={animating}
+              isAnimating={animatingDerived.value}
               onPress={() => {}}
             />
           </Animated.View>

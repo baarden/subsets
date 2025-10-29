@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { ScrollView as RNScrollVIew } from 'react-native'
 import { YStack, Text, ScrollView, Stack, Theme } from 'tamagui'
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import TitleBar from 'app/features/titlebar'
 import GuessRow from 'app/features/guessrow'
 import EditRow from 'app/features/editrow'
@@ -106,13 +107,7 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
   render.current += 1;
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const hasVisited = localStorage.getItem('hasVisited');
-      if (!hasVisited) {
-        setDrawerVisible(true);
-        localStorage.setItem('hasVisited', 'true');
-      }
-    }
+    checkFirstVisit();
 
     fetchStatus(config)
       .then((statusData) => {
@@ -129,6 +124,14 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
       scrollViewRef.current.scrollToEnd({ animated: true });
     }
   }, [status]);
+
+  const checkFirstVisit = async () => {
+    const hasVisited = await AsyncStorage.getItem('hasVisited');
+    if (!hasVisited) {
+      setDrawerVisible(true);
+      await AsyncStorage.setItem('hasVisited', 'true');
+    }
+  };
 
   const updateStatus = (statusData: Status) => {
     if (!statusData) {
@@ -255,12 +258,12 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
       const idx = states.findIndex(s => s.key === c && s.plusone === true);
       states[idx].plusone = false;
     });
-    const stateRef = structuredClone(states);
+    const stateRef = states.map(s => {return {...s};});
     // Loop over guesses for the current wordIndex
     guesses.forEach((guess) => {
       if (guess.wordIndex !== wordIndex) { return; }
       const chars = guess.characters;
-      let localStates = structuredClone(stateRef);
+      let localStates = stateRef.map(s => {return {...s};});
       let goodCount = 0;
       let goodPlusOne = false;
       chars.forEach(c => {
@@ -320,7 +323,7 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
       return
     }
     if (swapState) {
-      let chars = structuredClone(currentGuess.characters)
+      let chars = [...currentGuess.characters];
       const originalIndexLetter = chars[index].letter
       chars[index].letter = chars[editableIndex].letter
       chars[editableIndex].letter = originalIndexLetter
@@ -494,17 +497,12 @@ export const GameComponent: React.FC<GameComponentProps> = ({ path }) => {
   );
 
   const handleMoveSquare = (oldIndex: number, newIndex: number) => {
-    let clues = structuredClone(currentGuess.characters);
+    let chars: Clue[] = [...currentGuess.characters];
     const insIndex = (oldIndex > newIndex) ? newIndex : newIndex + 1;
-    clues.splice(insIndex, 0, currentGuess.characters[oldIndex]);
+    chars.splice(insIndex, 0, currentGuess.characters[oldIndex]);
     const delIndex = (newIndex > oldIndex) ? oldIndex : oldIndex + 1;
-    clues.splice(delIndex, 1);
-    let chars = structuredClone(currentGuess.characters);
-    for (let i = 0; i < chars.length; i++) {
-      chars[i].letter = clues[i].letter;
-      chars[i].clueType = clues[i].clueType;
-    }
-    const newGuess = {
+    chars.splice(delIndex, 1);
+    const newGuess: Guess = {
       ...currentGuess,
       characters: chars
     }
