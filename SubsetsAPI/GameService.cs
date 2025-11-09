@@ -313,58 +313,31 @@ public class GameService
     private static List<Clue> GetClues(string guess, string referenceWord)
     {
         var clues = new List<Clue>();
-        var referenceCharCount = new Dictionary<char, int>();
-        var correctLetterCount = new Dictionary<char, int>();
 
-        // Initialize counts from the reference word
-        foreach (char c in referenceWord)
-        {
-            if (referenceCharCount.TryGetValue(c, out int value))
-                referenceCharCount[c] = ++value;
-            else
-                referenceCharCount[c] = 1;
-
-            correctLetterCount[c] = 0;
-        }
-
-        // First pass: Identify AllCorrect clues and adjust correctLetterCount
         for (int i = 0; i < referenceWord.Length; i++)
         {
-            if (i < guess.Length && guess[i] == referenceWord[i])
-            {
-                correctLetterCount[guess[i]]++;
-            }
-        }
-
-        // Second pass: Generate clues using adjusted counts
-        for (int i = 0; i < referenceWord.Length; i++)
-        {
-            char refChar = referenceWord[i];
             char guessChar = i < guess.Length ? guess[i] : ' ';
             ClueType type;
 
-            if (guessChar == ' ')
+            if (guessChar == referenceWord[i])
             {
-                type = ClueType.Empty;
-            }
-            else if (guessChar == refChar)
-            {
+                // Character is in the correct position
                 type = ClueType.AllCorrect;
+            }
+            else if ((i > 0 && guessChar == referenceWord[i - 1]) ||
+                     (i < referenceWord.Length - 1 && guessChar == referenceWord[i + 1]))
+            {
+                // Character appears in an adjacent position (left or right)
+                type = ClueType.Adjacent;
             }
             else if (referenceWord.Contains(guessChar))
             {
-                if (correctLetterCount[guessChar] < referenceCharCount[guessChar])
-                {
-                    type = ClueType.CorrectLetter;
-                    correctLetterCount[guessChar]++;
-                }
-                else
-                {
-                    type = ClueType.Incorrect;
-                }
+                // Character exists in the word but is not correct or adjacent
+                type = ClueType.Empty;
             }
             else
             {
+                // Character doesn't exist in the reference word
                 type = ClueType.Incorrect;
             }
 

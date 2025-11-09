@@ -7,7 +7,7 @@ public class Constants
 {
     public enum GuessState { Solved, Unsolved }
     public enum GameState { Solved, Unsolved }
-    public enum ClueType { CorrectLetter, AllCorrect, Incorrect, Empty }
+    public enum ClueType { Adjacent, AllCorrect, Incorrect, Empty }
     public const int StartWordIndex = 0;
 
     public static readonly AppSettings PlusOneConfig = new(
