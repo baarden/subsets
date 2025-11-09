@@ -36,7 +36,6 @@ public class Guess
     public int Offset { get; set; }
     public string HighlightLetter { get; set; } = "";
     public GuessState State { get; set; }
-    public DateOnly Date { get; set; }
 }
 
 public class Clue

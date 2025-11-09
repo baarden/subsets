@@ -20,4 +20,4 @@ select distinct ARRAY[l.wordid, l.wordid2]
 from leads l
 where l.wordid2 is not null;
 
-create index ix_bigrams_bigram on bigrams USING GIN (bigram);
+create index ix_bigrams_bigram on bigrams USING GIN (bigram gin__int_ops);

@@ -53,10 +53,9 @@ public class GameService
         status.ClueWord = gameData.ClueWord;
 
         int key = 0;
-        AddStartingGuess(status, gameData);
 
         List<GuessData> guessDataList = FetchGuessData(userId, today, isMore);
-        int maxWordIndex = 1;
+        int maxWordIndex = 0;
         foreach (var guessData in guessDataList)
         {
             int offset = 0;
@@ -72,32 +71,109 @@ public class GameService
             status.Guesses.Add(guess);
 
             maxWordIndex = (guess.State == GuessState.Solved) ? guess.WordIndex + 1 : guess.WordIndex;
-
-            if (guess.State == GuessState.Solved && maxWordIndex == config.ExtraLetterIndex) {
-                string finalLetter = gameData.HighlightLetter(config.ExtraLetterIndex);
-                Guess finalGuess = GetGuess(++key, finalLetter, finalLetter, config.ExtraLetterIndex, 1, finalLetter);
-                status.Guesses.Add(finalGuess);
-                maxWordIndex++;
-            }
         }
 
         status.State = (maxWordIndex <= config.AnagramIndex) ? GameState.Unsolved : GameState.Solved;
         string? refWord = null;
 
-        int refCharIdx = (maxWordIndex == config.AnagramIndex) ? config.AnagramIndex : config.LastPlusOneIndex;
-        List<char> gameChars = gameData.ReferenceWord(refCharIdx).ToList(); 
-        string prevWord = (maxWordIndex == config.AnagramIndex) ? "" : gameData.ReferenceWord(maxWordIndex - 1);
-        List<char> group1 = prevWord.ToList();
-        Dictionary<char, int> prevCharCounts = prevWord.GroupBy(c => c).ToDictionary(g => g.Key, g => g.Count());
-        List<char> group2 = gameChars.Where(c => !prevCharCounts.ContainsKey(c) || prevCharCounts[c]-- <= 0).ToList();
-        group1.Sort();
-        group2.Sort();
-        status.Characters = group1.Concat(group2).ToList();
+        // Collect unsolved highlight letters (from maxWordIndex through AnagramIndex)
+        List<char> characters = new List<char>();
+        for (int i = maxWordIndex; i <= config.AnagramIndex; i++)
+        {
+            string highlightLetter = gameData.HighlightLetter(i);
+            if (!string.IsNullOrEmpty(highlightLetter) && highlightLetter.Length > 0)
+            {
+                characters.Add(highlightLetter[0]);
+            }
+        }
+
+        // Add one deterministic extra letter based on the date (same throughout the game)
+        char extraLetter = gameData.GetExtraLetter(today);
+        characters.Add(extraLetter);
+
+        // Sort the final list
+        characters.Sort();
+        status.Characters = characters;
 
         if (status.State == GameState.Unsolved)
         {
-            refWord = gameData.ReferenceWord(maxWordIndex);
-            status.NextGuess = GetGuess(++key, "", refWord, maxWordIndex, 0);
+            // Special handling for ExtraLetterIndex - create 1-character NextGuess with space
+            if (maxWordIndex == config.ExtraLetterIndex)
+            {
+                string finalLetter = gameData.HighlightLetter(config.ExtraLetterIndex);
+                refWord = finalLetter;
+                Guess nextGuess = GetGuess(++key, " ", finalLetter, maxWordIndex, 0);
+                nextGuess.HighlightLetter = " ";
+                status.NextGuess = nextGuess;
+            }
+            else
+            {
+                refWord = gameData.ReferenceWord(maxWordIndex);
+                // Get the most recent guess and use its characters for NextGuess
+                Guess? previousGuess = status.Guesses.LastOrDefault();
+                string previousGuessWord = previousGuess?.GuessWord ?? "";
+
+                // If no previous guess exists, use the first word with highlight character replaced by space
+                if (string.IsNullOrEmpty(previousGuessWord))
+                {
+                    string firstWord = gameData.ReferenceWord(0);
+                    string highlightLetter = gameData.HighlightLetter(0);
+                    int highlightIndex = firstWord.IndexOf(highlightLetter);
+                    if (highlightIndex >= 0)
+                    {
+                        // Replace highlight character with space
+                        string wordWithSpace = firstWord.Substring(0, highlightIndex) + " " + firstWord.Substring(highlightIndex + 1);
+                        // Sort alphabetically with space at the end
+                        List<char> chars = wordWithSpace.ToList();
+                        List<char> nonSpaceChars = chars.Where(c => c != ' ').OrderBy(c => c).ToList();
+                        List<char> spaceChars = chars.Where(c => c == ' ').ToList();
+                        previousGuessWord = new string(nonSpaceChars.Concat(spaceChars).ToArray());
+                    }
+                    else
+                    {
+                        previousGuessWord = firstWord;
+                    }
+                }
+
+                // Create a guess with spaces to get Empty clue types
+                string emptyGuess = new string(' ', refWord.Length);
+                Guess nextGuess = GetGuess(++key, emptyGuess, refWord, maxWordIndex, 0);
+
+                // Replace the space characters with previous guess characters
+                for (int i = 0; i < previousGuessWord.Length && i < nextGuess.Characters.Count; i++)
+                {
+                    nextGuess.Characters[i].Letter = previousGuessWord[i];
+                }
+                nextGuess.GuessWord = previousGuessWord;
+
+                // Determine highlight letter for NextGuess
+                if (nextGuess.GuessWord.Contains(' '))
+                {
+                    nextGuess.HighlightLetter = " ";
+                }
+                else
+                {
+                    // Get reference word and remove its highlight letter
+                    string refHighlight = gameData.HighlightLetter(maxWordIndex);
+                    List<char> refChars = refWord.ToList();
+                    if (!string.IsNullOrEmpty(refHighlight) && refHighlight.Length > 0)
+                    {
+                        refChars.Remove(refHighlight[0]);
+                    }
+
+                    // Find the extra character in nextGuess (handles duplicates correctly)
+                    foreach (char c in nextGuess.GuessWord)
+                    {
+                        if (!refChars.Remove(c))
+                        {
+                            nextGuess.HighlightLetter = c.ToString();
+                            break;
+                        }
+                    }
+                }
+
+                status.NextGuess = nextGuess;
+            }
         } else {
             int[] newOrder = gameData.AnagramSortOrder();
             List<Guess> guesses = newOrder.SelectMany(i => status.Guesses.Where(g => g.WordIndex == i)).ToList();
@@ -168,13 +244,6 @@ public class GameService
         throw new Exception("Unable to read statistics!");
     }
 
-    private static void AddStartingGuess(Status status, GameDayDataProvider gameData)
-    {
-        int index = 0;
-        string startWord = gameData.ReferenceWord(index);
-        string highlightLetter = gameData.HighlightLetter(index);
-        status.Guesses.Add(GetGuess(0, startWord, startWord, index, 0, highlightLetter));
-    }
 
     private List<GuessData> FetchGuessData(int userId, DateOnly playDate, bool isMore)
     {
@@ -331,7 +400,7 @@ public class GameService
         checkCmd.Parameters.AddWithValue("@Guess", trimGuess);
 
         var count = Convert.ToInt32(checkCmd.ExecuteScalar());
-        if (count == 0) { return (false, "Not in the word list"); }
+        if (count == 0) { return (false, $"'{trimGuess}' is not in the word list"); }
 
         Guess guessData = GetGuess(0, guess, refWord, guessWordIndex, 0);
         bool solved = guessData.Characters.All(c => c.Type == ClueType.AllCorrect);
@@ -388,6 +457,29 @@ public class GameDayDataProvider
     {
         if (wordIndex == _config.AnagramIndex) { return ""; }
         return _gameDayData.AnagramSources[wordIndex];
+    }
+
+    public char GetExtraLetter(DateOnly date)
+    {
+        // Collect all characters from reference words (indices 0 through LastPlusOneIndex)
+        List<char> allChars = new List<char>();
+        for (int i = 0; i <= _config.LastPlusOneIndex; i++)
+        {
+            allChars.AddRange(_gameDayData.SubsetWords[i]);
+        }
+
+        // Exclude the highlight letter at ExtraLetterIndex to avoid duplicates at the final step
+        string finalHighlight = HighlightLetter(_config.ExtraLetterIndex);
+        if (!string.IsNullOrEmpty(finalHighlight) && finalHighlight.Length > 0)
+        {
+            allChars.Remove(finalHighlight[0]);
+        }
+
+        // Use date hash to pick a deterministic index
+        int dateHash = date.GetHashCode();
+        int index = Math.Abs(dateHash) % allChars.Count;
+
+        return allChars[index];
     }
 
     public int[] AnagramSortOrder()

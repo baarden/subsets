@@ -6,6 +6,10 @@
 # dotenv files
 .env
 
+# appsettings files with secrets (environment-specific)
+appsettings.*.json
+!appsettings.json
+
 # User-specific files
 *.rsuser
 *.suo

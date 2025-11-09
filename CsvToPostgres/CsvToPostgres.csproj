@@ -10,12 +10,23 @@
   <ItemGroup>
     <PackageReference Include="CsvHelper" Version="32.0.3" />
     <PackageReference Include="dbup-postgresql" Version="5.0.40" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
     <PackageReference Include="Npgsql" Version="8.0.3" />
     <PackageReference Include="Syn.WordNet" Version="1.0.5" />
   </ItemGroup>
 
 	<ItemGroup>
 		<EmbeddedResource Include="Migrations\*" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Update="appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Update="appsettings.Development.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 	</ItemGroup>
 
 	<ItemGroup>

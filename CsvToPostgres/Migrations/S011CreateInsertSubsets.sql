@@ -8,6 +8,7 @@ CREATE TABLE plusone (
 	AnagramSources CHAR[],
 	ClueWord TEXT,
 	Ranking FLOAT,
+	RankNum INT,
 	Batch INT,
 	BatchPool INT,
 	Deleted BOOL DEFAULT FALSE,
@@ -38,6 +39,7 @@ CREATE TABLE plusonemore (
 	AnagramSources CHAR[],
 	ClueWord TEXT,
 	Ranking FLOAT,
+	RankNum INT,
 	Batch INT,
 	BatchPool INT,
 	Deleted BOOL DEFAULT FALSE,
@@ -56,3 +58,5 @@ from words w8
 	join words w3 on w3.sorted = any(w4.subsets) and not (w3.trigrams && w4.trigrams) and w3.frequency > 11
 where w8.length = 8
 ;
+
+VACUUM ANALYZE;

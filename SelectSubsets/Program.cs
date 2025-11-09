@@ -1,6 +1,9 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Json;
 using Npgsql;
 using SelectSubsets;
 
@@ -42,11 +45,10 @@ class Program
         StartWordIndex: 6,
         TargetRanking: 97.0
     );
-    private static readonly string connectionString = "Host=localhost;Username=admin;Password=T9Bt4M7tSB!r;Database=plusone";
+    private static readonly string connectionString = GetConnectionString();
     private static readonly int _batch = 1;
     internal static readonly char[] separator = [' '];
     private static AppSettings _config = PlusOneSettings;
-
 
     static void Main(string[] args)
     {
@@ -99,6 +101,17 @@ class Program
         }
     }
 
+    private static string GetConnectionString()
+    {
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.Development.json", optional: false, reloadOnChange: true)
+            .Build();
+
+        return configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    }
+
     private static (int, string[]?, string?, string[]?) GetValidSet(NpgsqlConnection conn)
     {
         int deletedSets = 0;
@@ -108,12 +121,14 @@ class Program
             if (words == null) { return (0, null, null, null); }
 
             (string? anagram, string[]? anagramSourceChars) = GetAnagram(index, conn);
-            if (anagram == null) {
+            if (anagram == null)
+            {
                 deletedSets++;
                 DeleteSubset(index, conn);
                 continue;
             }
-            if (deletedSets > 0) {
+            if (deletedSets > 0)
+            {
                 Console.WriteLine($"Deleted {deletedSets} sets without anagrams.");
             }
             return (index, words, anagram, anagramSourceChars);
@@ -127,11 +142,10 @@ class Program
             FROM {_config.SetTable}
             WHERE batchPool = @batch
                 and deleted = false
-            ORDER BY ABS(ranking - @targetRanking)
+            ORDER BY ranknum
             LIMIT 1";
         using var cmd = new NpgsqlCommand(query, conn);
         cmd.Parameters.AddWithValue("@batch", _batch);
-        cmd.Parameters.AddWithValue("@targetRanking", _config.TargetRanking);
         using var reader = cmd.ExecuteReader();
         if (reader.Read())
         {
@@ -231,17 +245,19 @@ class Program
     private static void DeleteSubsetOverlaps(int index, NpgsqlConnection conn)
     {
         var queryDeleteSubsetOverlaps = @$"
-			select d.id set_id
-			into temp table deletions
-			from {_config.SetTable} d
-				cross join (
-					select id, bigrams
-					from {_config.SetTable}
-					where id = @id
-				) bd
-			where d.id != bd.id
-				and cardinality(d.bigrams & bd.bigrams) > 1
-				and d.deleted = false;
+            WITH target AS (
+                SELECT id, bigrams
+                FROM {_config.SetTable}
+                WHERE id = @id
+            )
+            SELECT d.id AS set_id
+            INTO TEMP TABLE deletions
+            FROM {_config.SetTable} d
+                CROSS JOIN target t
+            WHERE d.id != t.id
+                AND d.deleted = false
+                AND d.bigrams && t.bigrams
+                AND cardinality(d.bigrams & t.bigrams) > 1;
 
             update {_config.SetTable}
             set deleted = true
@@ -259,56 +275,81 @@ class Program
 
     private static void MoveWordOverlapsToNextBatch(int index, NpgsqlConnection conn)
     {
+        int batchSize = 5000;
         var queryMoveOverlaps = @$"
-			create temp table migrations (id serial primary key, setId int);
-
-			insert into migrations (setId)
-			select d.id
-			from {_config.SetTable} d
-				cross join (
-					select id, wordids, batchpool
-					from {_config.SetTable}
-					where id = @id
-				) bd
-			where d.id != bd.id
-				and d.batchPool = @batch
-				and cardinality(d.wordids & bd.wordids) > 0
-				and d.deleted = false
-			order by d.id
-			;
-
-			DO $$
-			DECLARE
-			    batch_size INTEGER := 1000;
-			    shift INTEGER := 0;
-			BEGIN
-			    LOOP
-			        WITH migrationBatch AS (
-			            SELECT setid
-			            FROM migrations
-						order by id
-			            LIMIT batch_size OFFSET shift
-			        )
-			        UPDATE {_config.SetTable} p
-			        SET batchpool = (@batch + 1)
-			        FROM migrationBatch m
-			        WHERE p.id = m.setid;
-			        
-			        EXIT WHEN NOT FOUND;
-			        shift := shift + batch_size;
-			    END LOOP;
-			END $$;
-
-            drop table migrations;
+            WITH target AS (
+                SELECT id, wordids, batchpool
+                FROM {_config.SetTable}
+                WHERE id = @id
+            ),
+            to_update AS (
+                SELECT d.id
+                FROM {_config.SetTable} d
+                CROSS JOIN target t
+                WHERE d.id != t.id
+                    AND d.batchpool = @batch
+                    AND d.wordids && t.wordids
+                    AND d.deleted = false
+                LIMIT @batchSize
+            )
+            UPDATE {_config.SetTable} p
+            SET batchpool = (@batch + 1)
+            FROM to_update u
+            WHERE p.id = u.id;
         ";
-        
-        using var cmdMoveOverlaps = new NpgsqlCommand(queryMoveOverlaps, conn);
-        cmdMoveOverlaps.CommandTimeout = 300; // 5 minutes in seconds
-        cmdMoveOverlaps.Parameters.AddWithValue("@batch", _batch);
-        cmdMoveOverlaps.Parameters.AddWithValue("@id", index);
-        cmdMoveOverlaps.CommandTimeout = 120;
-        cmdMoveOverlaps.ExecuteNonQuery();
-        Console.WriteLine("Sets with word overlap moved to next batch.");
+
+        // Query without LIMIT to get accurate total estimate
+        var explainQuery = @$"
+            EXPLAIN (FORMAT JSON)
+            WITH target AS (
+                SELECT id, wordids, batchpool
+                FROM {_config.SetTable}
+                WHERE id = @id
+            )
+            SELECT d.id
+            FROM {_config.SetTable} d
+            CROSS JOIN target t
+            WHERE d.id != t.id
+                AND d.batchpool = @batch
+                AND d.wordids && t.wordids
+                AND d.deleted = false;
+        ";
+
+        // Get estimate of affected rows and calculate estimated batches
+        int estimatedBatches = 1;
+        using (var cmdExplain = new NpgsqlCommand(explainQuery, conn))
+        {
+            cmdExplain.CommandTimeout = 120;
+            cmdExplain.Parameters.AddWithValue("@batch", _batch);
+            cmdExplain.Parameters.AddWithValue("@id", index);
+
+            using var reader = cmdExplain.ExecuteReader();
+            if (reader.Read())
+            {
+                var jsonPlan = reader.GetString(0);
+                var estimatedRows = ExtractEstimatedRows(jsonPlan);
+                estimatedBatches = (int)Math.Ceiling(1.0 * estimatedRows / batchSize);
+            }
+        }
+
+        int batchNumber = 0;
+        int rowsAffected;
+        do
+        {
+            using var cmdMoveOverlaps = new NpgsqlCommand(queryMoveOverlaps, conn);
+            cmdMoveOverlaps.CommandTimeout = 120;
+            cmdMoveOverlaps.Parameters.AddWithValue("@batch", _batch);
+            cmdMoveOverlaps.Parameters.AddWithValue("@id", index);
+            cmdMoveOverlaps.Parameters.AddWithValue("@batchSize", batchSize);
+            rowsAffected = cmdMoveOverlaps.ExecuteNonQuery();
+
+            if (rowsAffected > 0)
+            {
+                batchNumber++;
+                Console.WriteLine($"Moved batch {batchNumber} (avg {estimatedBatches})");
+            }
+        } while (rowsAffected > 0);
+
     }
 
     private static (string?, string[]?) GetAnagram(int index, NpgsqlConnection conn)
@@ -478,27 +519,63 @@ class Program
             using var cmdInsert = new NpgsqlCommand(insertQuery, conn);
             cmdInsert.Parameters.AddWithValue("@word", wordToDelete);
             cmdInsert.ExecuteNonQuery();
+            int batchSize = 5000;
 
             var queryDeleteSubsets = @$"
-				select s.id setId
-				into temp table deletions
-				from {_config.SetTable} s
-					join words w on w.id = any(s.wordids)
-				where w.word = @word
-					and s.deleted = false;
+                WITH to_delete AS (
+                    SELECT s.id
+                    FROM {_config.SetTable} s
+                    WHERE s.wordids @> ARRAY[(SELECT id FROM words WHERE word = @word LIMIT 1)]
+                        AND s.deleted = false
+                    LIMIT @batchSize
+                )
+                UPDATE {_config.SetTable} s
+                SET deleted = true
+                FROM to_delete d
+                WHERE d.id = s.id;
+            ";
 
-				update {_config.SetTable} s
-                set deleted = true
-                from deletions d
-                where d.setId = s.id;
+            // Query without LIMIT to get accurate total estimate
+            var explainQuery = @$"
+                EXPLAIN (FORMAT JSON)
+                SELECT s.id
+                FROM {_config.SetTable} s
+                WHERE s.wordids @> ARRAY[(SELECT id FROM words WHERE word = @word LIMIT 1)]
+                    AND s.deleted = false;
+            ";
 
-                drop table deletions;
-             ";
+            // Get estimate of affected rows and calculate estimated batches
+            int estimatedBatches = 1;
+            using (var cmdExplain = new NpgsqlCommand(explainQuery, conn))
+            {
+                cmdExplain.CommandTimeout = 120;
+                cmdExplain.Parameters.AddWithValue("@word", wordToDelete);
 
-            using var cmdDeleteSubsets = new NpgsqlCommand(queryDeleteSubsets, conn);
-            cmdDeleteSubsets.CommandTimeout = 300; // 5 minutes in seconds
-            cmdDeleteSubsets.Parameters.AddWithValue("@word", wordToDelete);
-            cmdDeleteSubsets.ExecuteNonQuery();
+                using var reader = cmdExplain.ExecuteReader();
+                if (reader.Read())
+                {
+                    var jsonPlan = reader.GetString(0);
+                    var estimatedRows = ExtractEstimatedRows(jsonPlan);
+                    estimatedBatches = (int)Math.Ceiling(1.0 * estimatedRows / batchSize);
+                }
+            }
+
+            int batchNumber = 0;
+            int rowsAffected;
+            do
+            {
+                using var cmdDeleteSubsets = new NpgsqlCommand(queryDeleteSubsets, conn);
+                cmdDeleteSubsets.CommandTimeout = 120;
+                cmdDeleteSubsets.Parameters.AddWithValue("@word", wordToDelete);
+                cmdDeleteSubsets.Parameters.AddWithValue("@batchSize", batchSize);
+                rowsAffected = cmdDeleteSubsets.ExecuteNonQuery();
+
+                if (rowsAffected > 0)
+                {
+                    batchNumber++;
+                    Console.WriteLine($"Deleted batch {batchNumber} (average {estimatedBatches})");
+                }
+            } while (rowsAffected > 0);
 
             transaction.Commit();
             Console.WriteLine("Word and affected sets deleted.");
@@ -589,6 +666,29 @@ class Program
         catch (Exception ex)
         {
             Console.WriteLine("An error occurred: " + ex.Message);
+        }
+    }
+
+    private static long ExtractEstimatedRows(string jsonPlan)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(jsonPlan);
+            var root = doc.RootElement;
+            if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
+            {
+                var plan = root[0].GetProperty("Plan");
+                if (plan.TryGetProperty("Plan Rows", out var planRows))
+                {
+                    long rowEst = planRows.GetInt64();
+                    return rowEst;
+                }
+            }
+            return -1;
+        }
+        catch
+        {
+            return -1;
         }
     }
 }

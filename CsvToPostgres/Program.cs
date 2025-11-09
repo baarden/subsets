@@ -8,6 +8,7 @@ using System.Reflection;
 using DbUp;
 using DbUp.Builder;
 using DbUp.Engine;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 
 namespace CsvToPostgres;
@@ -16,7 +17,22 @@ class Program
 {
     static void Main(string[] args)
     {
-        string connectionString = "Host=localhost;Username=admin;Password=T9Bt4M7tSB!r;Database=plusone";
+        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
+
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
+            .Build();
+
+        string? connectionString = configuration.GetConnectionString("DefaultConnection");
+
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            Console.WriteLine("Error: Connection string 'DefaultConnection' not found in configuration.");
+            Console.WriteLine($"Current environment: {environment}");
+            return;
+        }
 
         RunMigrations(connectionString);
     }
