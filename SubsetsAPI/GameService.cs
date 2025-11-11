@@ -368,7 +368,7 @@ public class GameService
             Length = referenceWord.Length,
             Offset = offset,
             HighlightIndex = highlightIndex,
-            Characters = GetClues(guess, referenceWord),
+            Characters = GetClues(guess, referenceWord, highlightIndex),
             State = GuessState.Unsolved
         };
 
@@ -380,7 +380,7 @@ public class GameService
         return newGuess;
     }
 
-    private static List<Clue> GetClues(string guess, string referenceWord)
+    private static List<Clue> GetClues(string guess, string referenceWord, int highlightIndex = -1)
     {
         var clues = new List<Clue>();
 
@@ -389,7 +389,12 @@ public class GameService
             char guessChar = i < guess.Length ? guess[i] : ' ';
             ClueType type;
 
-            if (guessChar == referenceWord[i])
+            // Direct check for highlight position: if this is the highlight character and it doesn't match, it's incorrect
+            if (i == highlightIndex && guessChar != referenceWord[i])
+            {
+                type = ClueType.Incorrect;
+            }
+            else if (guessChar == referenceWord[i])
             {
                 // Character is in the correct position
                 type = ClueType.AllCorrect;
