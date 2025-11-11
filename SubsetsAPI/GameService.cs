@@ -63,9 +63,10 @@ public class GameService
             Guess guess = GetGuess(
                 ++key,
                 guessData.GuessText,
-                gameData.ReferenceWord(guessData.ReferenceWordIndex), 
-                guessData.ReferenceWordIndex, 
+                gameData.ReferenceWord(guessData.ReferenceWordIndex),
+                guessData.ReferenceWordIndex,
                 offset,
+                guessData.HighlightIndex,
                 highlightLetter
             );
             status.Guesses.Add(guess);
@@ -76,14 +77,15 @@ public class GameService
         status.State = (maxWordIndex <= config.AnagramIndex) ? GameState.Unsolved : GameState.Solved;
         string? refWord = null;
 
-        // Collect unsolved highlight letters (from maxWordIndex through AnagramIndex)
+        // Collect unsolved highlight letters from AnagramSources (from maxWordIndex onwards)
         List<char> characters = new List<char>();
-        for (int i = maxWordIndex; i <= config.AnagramIndex; i++)
+        string[] anagramSources = gameData.GetAnagramSources();
+        for (int i = maxWordIndex; i < anagramSources.Length; i++)
         {
-            string highlightLetter = gameData.HighlightLetter(i);
-            if (!string.IsNullOrEmpty(highlightLetter) && highlightLetter.Length > 0)
+            string letter = anagramSources[i];
+            if (!string.IsNullOrEmpty(letter) && letter.Length > 0)
             {
-                characters.Add(highlightLetter[0]);
+                characters.Add(letter[0]);
             }
         }
 
@@ -97,14 +99,32 @@ public class GameService
 
         if (status.State == GameState.Unsolved)
         {
-            // Special handling for ExtraLetterIndex - create 1-character NextGuess with space
-            if (maxWordIndex == config.ExtraLetterIndex)
+            // Special handling for AnagramIndex - create 1-character NextGuess with the extra letter
+            if (maxWordIndex == config.AnagramIndex)
             {
-                string finalLetter = gameData.HighlightLetter(config.ExtraLetterIndex);
-                refWord = finalLetter;
-                Guess nextGuess = GetGuess(++key, " ", finalLetter, maxWordIndex, 0);
+                refWord = gameData.ReferenceWord(config.AnagramIndex);
+                Guess? previousGuess = status.Guesses.LastOrDefault();
+
+                string nextChar = " ";
+                int nextHighlightIndex = 0;
+
+                if (previousGuess?.WordIndex == config.AnagramIndex)
+                {
+                    nextChar = previousGuess.GuessWord[previousGuess.HighlightIndex].ToString();
+                    nextHighlightIndex = previousGuess.HighlightIndex;
+                }
+
+                Guess nextGuess = GetGuess(++key, nextChar, extraLetter.ToString(), maxWordIndex, 0, nextHighlightIndex);
                 nextGuess.HighlightLetter = " ";
                 status.NextGuess = nextGuess;
+
+                // Reorder guesses to spell out the previous guess (minus highlight letter)
+                if (previousGuess?.WordIndex == config.AnagramIndex && !string.IsNullOrEmpty(previousGuess.GuessWord))
+                {
+                    int[] newOrder = gameData.GuessSortOrder(previousGuess.GuessWord, previousGuess.HighlightIndex);
+                    status.Guesses = ReorderGuesses(status.Guesses, newOrder, config.AnagramIndex);
+                    status.Guesses.Reverse();
+                }
             }
             else
             {
@@ -112,32 +132,47 @@ public class GameService
                 // Get the most recent guess and use its characters for NextGuess
                 Guess? previousGuess = status.Guesses.LastOrDefault();
                 string previousGuessWord = previousGuess?.GuessWord ?? "";
+                int nextHighlightIndex = 0;
 
-                // If no previous guess exists, use the first word with highlight character replaced by space
-                if (string.IsNullOrEmpty(previousGuessWord))
+                // Check if this is the first guess for a new wordIndex
+                bool isFirstGuessForWordIndex = previousGuess == null || previousGuess.WordIndex != maxWordIndex;
+
+                if (isFirstGuessForWordIndex)
                 {
-                    string firstWord = gameData.ReferenceWord(0);
-                    string highlightLetter = gameData.HighlightLetter(0);
-                    int highlightIndex = firstWord.IndexOf(highlightLetter);
-                    if (highlightIndex >= 0)
+                    // First guess for this wordIndex
+                    if (string.IsNullOrEmpty(previousGuessWord))
                     {
-                        // Replace highlight character with space
-                        string wordWithSpace = firstWord.Substring(0, highlightIndex) + " " + firstWord.Substring(highlightIndex + 1);
-                        // Sort alphabetically with space at the end
-                        List<char> chars = wordWithSpace.ToList();
-                        List<char> nonSpaceChars = chars.Where(c => c != ' ').OrderBy(c => c).ToList();
-                        List<char> spaceChars = chars.Where(c => c == ' ').ToList();
-                        previousGuessWord = new string(nonSpaceChars.Concat(spaceChars).ToArray());
+                        // Very first guess of the game (wordIndex 0)
+                        string firstWord = gameData.ReferenceWord(0);
+                        string highlightLetter = gameData.HighlightLetter(0);
+                        int highlightIndex = firstWord.IndexOf(highlightLetter);
+                        if (highlightIndex >= 0)
+                        {
+                            // Replace highlight character with space
+                            string wordWithSpace = firstWord.Substring(0, highlightIndex) + " " + firstWord.Substring(highlightIndex + 1);
+                            // Sort alphabetically with space at the end
+                            List<char> chars = wordWithSpace.ToList();
+                            List<char> nonSpaceChars = chars.Where(c => c != ' ').OrderBy(c => c).ToList();
+                            List<char> spaceChars = chars.Where(c => c == ' ').ToList();
+                            previousGuessWord = new string(nonSpaceChars.Concat(spaceChars).ToArray());
+                        }
+                        else
+                        {
+                            previousGuessWord = firstWord;
+                        }
                     }
-                    else
-                    {
-                        previousGuessWord = firstWord;
-                    }
+                    // For first guess of new wordIndex, space is at the end (based on current refWord length)
+                    nextHighlightIndex = refWord.Length - 1;
+                }
+                else
+                {
+                    // Keep the highlight index from the most recent guess for this wordIndex
+                    nextHighlightIndex = previousGuess!.HighlightIndex;
                 }
 
                 // Create a guess with spaces to get Empty clue types
                 string emptyGuess = new string(' ', refWord.Length);
-                Guess nextGuess = GetGuess(++key, emptyGuess, refWord, maxWordIndex, 0);
+                Guess nextGuess = GetGuess(++key, emptyGuess, refWord, maxWordIndex, 0, nextHighlightIndex);
 
                 // Replace the space characters with previous guess characters
                 for (int i = 0; i < previousGuessWord.Length && i < nextGuess.Characters.Count; i++)
@@ -175,10 +210,30 @@ public class GameService
                 status.NextGuess = nextGuess;
             }
         } else {
+            // Solved state: modify the anagram guess to show only the highlight character
+            var anagramGuess = status.Guesses.FirstOrDefault(g =>
+                g.WordIndex == config.AnagramIndex && g.State == GuessState.Solved);
+
+            if (anagramGuess != null)
+            {
+                // Get the highlight character from the solved guess
+                char highlightChar = anagramGuess.GuessWord[anagramGuess.HighlightIndex];
+
+                // Modify the guess to be single-character
+                anagramGuess.GuessWord = highlightChar.ToString();
+                anagramGuess.Characters = new List<Clue>
+                {
+                    new Clue { Letter = highlightChar, Type = ClueType.AllCorrect }
+                };
+                anagramGuess.Length = 1;
+                anagramGuess.HighlightIndex = 0;
+                anagramGuess.HighlightLetter = highlightChar.ToString();
+            }
+
+            // Reorder all guesses (including the modified single-character anagram guess)
             int[] newOrder = gameData.AnagramSortOrder();
-            List<Guess> guesses = newOrder.SelectMany(i => status.Guesses.Where(g => g.WordIndex == i)).ToList();
-            var anagramGuesses = status.Guesses.Where(g => g.WordIndex == config.AnagramIndex).ToList();
-            status.Guesses = guesses.Concat(anagramGuesses).ToList();
+            status.Guesses = ReorderGuesses(status.Guesses, newOrder, -1);
+            status.Guesses.Reverse();
         }
  
         status.Indent = 0;
@@ -253,7 +308,7 @@ public class GameService
         conn.Open();
 
         string guessQuery = @"
-            SELECT Guess, GuessWordIdx, GuessNumber
+            SELECT Guess, GuessWordIdx, GuessNumber, HighlightIdx
             FROM Guess
             WHERE UserId = @UserId
                 AND IsMore = @IsMore
@@ -272,15 +327,28 @@ public class GameService
             string guessText = (string)reader["Guess"];
             int referenceWordIndex = (int)reader["GuessWordIdx"];
             int guessNumber = (int)reader["GuessNumber"];
+            int highlightIndex = (int)reader["HighlightIdx"];
 
             var data = new GuessData(
                 GuessText: guessText,
                 ReferenceWordIndex: referenceWordIndex,
-                GuessNumber: guessNumber);
+                GuessNumber: guessNumber,
+                HighlightIndex: highlightIndex);
             guesses.Add(data);
         }
 
         return guesses;
+    }
+
+    private static List<Guess> ReorderGuesses(List<Guess> allGuesses, int[] sortOrder, int excludeWordIndex)
+    {
+        List<Guess> reordered = sortOrder
+            .SelectMany(i => allGuesses.Where(g => g.WordIndex == i && g.WordIndex != excludeWordIndex))
+            .ToList();
+
+        var excluded = allGuesses.Where(g => g.WordIndex == excludeWordIndex).ToList();
+
+        return reordered.Concat(excluded).ToList();
     }
 
     private static Guess GetGuess(
@@ -289,6 +357,7 @@ public class GameService
         string referenceWord,
         int wordIndex,
         int offset,
+        int highlightIndex = 0,
         string highlightLetter="")
     {
         var newGuess = new Guess
@@ -298,6 +367,7 @@ public class GameService
             WordIndex = wordIndex,
             Length = referenceWord.Length,
             Offset = offset,
+            HighlightIndex = highlightIndex,
             Characters = GetClues(guess, referenceWord),
             State = GuessState.Unsolved
         };
@@ -353,6 +423,7 @@ public class GameService
         int guessNumber,
         int guessWordIndex,
         string guess,
+        int highlightIndex,
         bool isMore)
     {
         string trimGuess = guess.Trim();
@@ -375,12 +446,12 @@ public class GameService
         var count = Convert.ToInt32(checkCmd.ExecuteScalar());
         if (count == 0) { return (false, $"'{trimGuess}' is not in the word list"); }
 
-        Guess guessData = GetGuess(0, guess, refWord, guessWordIndex, 0);
+        Guess guessData = GetGuess(0, guess, refWord, guessWordIndex, 0, highlightIndex);
         bool solved = guessData.Characters.All(c => c.Type == ClueType.AllCorrect);
 
         string insertQuery = @"
-            INSERT INTO Guess (UserId, IsMore, GuessDate, GuessNumber, GuessWordIdx, Guess, Solved)
-            VALUES (@UserId, @IsMore, @GuessDate, @GuessNumber, @GuessWordIndex, @Guess, @Solved);
+            INSERT INTO Guess (UserId, IsMore, GuessDate, GuessNumber, GuessWordIdx, Guess, HighlightIdx, Solved)
+            VALUES (@UserId, @IsMore, @GuessDate, @GuessNumber, @GuessWordIndex, @Guess, @HighlightIdx, @Solved);
         ";
 
         using var cmd = new NpgsqlCommand(insertQuery, conn);
@@ -390,6 +461,7 @@ public class GameService
         cmd.Parameters.AddWithValue("@GuessNumber", guessNumber);
         cmd.Parameters.AddWithValue("@GuessWordIndex", guessWordIndex);
         cmd.Parameters.AddWithValue("@Guess", guess);
+        cmd.Parameters.AddWithValue("@HighlightIdx", highlightIndex);
         cmd.Parameters.AddWithValue("@Solved", solved);
 
         int result = cmd.ExecuteNonQuery();
@@ -441,13 +513,6 @@ public class GameDayDataProvider
             allChars.AddRange(_gameDayData.SubsetWords[i]);
         }
 
-        // Exclude the highlight letter at ExtraLetterIndex to avoid duplicates at the final step
-        string finalHighlight = HighlightLetter(_config.ExtraLetterIndex);
-        if (!string.IsNullOrEmpty(finalHighlight) && finalHighlight.Length > 0)
-        {
-            allChars.Remove(finalHighlight[0]);
-        }
-
         // Use date hash to pick a deterministic index
         int dateHash = date.GetHashCode();
         int index = Math.Abs(dateHash) % allChars.Count;
@@ -469,6 +534,31 @@ public class GameDayDataProvider
             charSources[idx] = "";
         }
         return sortOrder;
+    }
+
+    public int[] GuessSortOrder(string targetGuess, int highlightIndex)
+    {
+        List<string> charSources = _gameDayData.AnagramSources.ToList();
+
+        var sortOrder = new List<int>();
+        for (int i = 0; i < targetGuess.Length; i++)
+        {
+            if (i == highlightIndex) continue; // Skip highlight position
+
+            char c = targetGuess[i];
+            int idx = charSources.IndexOf(c.ToString());
+            if (idx >= 0)
+            {
+                sortOrder.Add(idx);
+                charSources[idx] = ""; // Mark as used for duplicates
+            }
+        }
+        return sortOrder.ToArray();
+    }
+
+    public string[] GetAnagramSources()
+    {
+        return _gameDayData.AnagramSources;
     }
 
     private GameDayData GetGameDayData(DateOnly playDate, string setTable)

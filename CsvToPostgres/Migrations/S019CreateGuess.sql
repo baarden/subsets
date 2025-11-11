@@ -7,6 +7,7 @@ create table Guess (
     GuessNumber INT,
     GuessWordIdx INT,
     Guess TEXT,
+    HighlightIdx INT,
     Solved bool
     );
 create index ix_guess_userid_guessdate_guess on guess (userid, guessdate, trim(guess));

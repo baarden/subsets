@@ -104,6 +104,7 @@ public partial class ApiController : ControllerBase
             guessNumber,
             status.NextGuess!.WordIndex,
             guess,
+            guessRequest.HighlightIndex,
             isMore);
         if (!inserted)
         {
