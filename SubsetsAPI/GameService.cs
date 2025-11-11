@@ -368,7 +368,7 @@ public class GameService
             Length = referenceWord.Length,
             Offset = offset,
             HighlightIndex = highlightIndex,
-            Characters = GetClues(guess, referenceWord, highlightIndex),
+            Characters = GetClues(guess, referenceWord, highlightIndex, highlightLetter),
             State = GuessState.Unsolved
         };
 
@@ -380,7 +380,7 @@ public class GameService
         return newGuess;
     }
 
-    private static List<Clue> GetClues(string guess, string referenceWord, int highlightIndex = -1)
+    private static List<Clue> GetClues(string guess, string referenceWord, int highlightIndex = -1, string highlightLetter = "")
     {
         var clues = new List<Clue>();
 
@@ -390,7 +390,7 @@ public class GameService
             ClueType type;
 
             // Direct check for highlight position: if this is the highlight character and it doesn't match, it's incorrect
-            if (i == highlightIndex && guessChar != referenceWord[i])
+            if (i == highlightIndex && !string.IsNullOrEmpty(highlightLetter) && guessChar != highlightLetter[0])
             {
                 type = ClueType.Incorrect;
             }
