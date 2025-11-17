@@ -40,9 +40,17 @@ builder.Services.AddStackExchangeRedisCache(options =>
 services.AddSession(options =>
 {
     options.Cookie.HttpOnly = false;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.Cookie.IsEssential = true;
     options.IdleTimeout = TimeSpan.FromHours(24);
+    
+    if (builder.Environment.IsDevelopment())
+    {
+        options.Cookie.SameSite = SameSiteMode.Lax;
+    } else
+    {
+        options.Cookie.SameSite = SameSiteMode.None;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    }
 });
 
 services.Configure<ForwardedHeadersOptions>(options =>
@@ -55,6 +63,17 @@ services.Configure<ForwardedHeadersOptions>(options =>
 });
 services.Configure<ProxySettings>(builder.Configuration.GetSection("ProxySettings"));
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DevPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 services.AddEndpointsApiExplorer();
 services.AddSwaggerGen();
@@ -66,6 +85,7 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseCors("DevPolicy");
 }
 
 app.UseSession();
