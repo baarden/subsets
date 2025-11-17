@@ -28,21 +28,15 @@ The app should be opened at the domain specified in the ngrok config in this pro
 
 Note that any dependencies with native code must be added to the `apps/expo` folder.
 
-To build the mobile app for the first time:
+To run the app in production, issue these two commands from `/subsets`:
 
-```
-cd apps/expo
-npx expo prebuild --no-install
-cd ios
-pod install
-```
+- yarn web:prod
+- yarn web:prod:serve
 
-To build the app when dependencies change:
-```
-cd apps/expo && yarn ios
-```
+# Setting up the repo
 
-To build the app in XCode: 
-```
-open apps/expo/ios/plusone.xcworkspace
-```
+The `CsvToPostgres` app will run the migrations to set up the backend database (use `dotnet run`).
+
+The `SelectSubsets` app will generate puzzles and take feedback to narrow down the search space (use `dotnet run`).
+
+You will need to manually set the `plusone.playdate` values in the Postgres database before the game server can be started.
