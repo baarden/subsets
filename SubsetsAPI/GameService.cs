@@ -133,7 +133,7 @@ public class GameService
             {
                 refWord = gameData.ReferenceWord(maxWordIndex);
                 // Get the most recent guess and use its characters for NextGuess
-                var (previousGuessWord, nextHighlightIndex) = GetNextGuessBase(status, gameData, maxWordIndex, refWord);
+                var (previousGuessWord, nextHighlightIndex) = GetNextGuessBase(status, gameData, maxWordIndex, refWord, config.AnagramIndex);
 
                 // Create a guess with spaces to get Empty clue types
                 string emptyGuess = new string(' ', refWord.Length);
@@ -268,7 +268,8 @@ public class GameService
         Status status,
         GameDayDataProvider gameData,
         int maxWordIndex,
-        string refWord)
+        string refWord,
+        int anagramIndex)
     {
         Guess? previousGuess = status.Guesses.LastOrDefault();
         string previousGuessWord = previousGuess?.GuessWord ?? "";
@@ -279,26 +280,41 @@ public class GameService
 
         if (isFirstGuessForWordIndex)
         {
-            // First guess for this wordIndex - build sorted character set with space at end
-            string currentWord = gameData.ReferenceWord(maxWordIndex);
-            string highlightLetter = gameData.HighlightLetter(maxWordIndex);
-            int highlightIndex = currentWord.IndexOf(highlightLetter);
-            if (highlightIndex >= 0)
+            // Special handling for anagram word
+            if (maxWordIndex == anagramIndex)
             {
-                // Replace highlight character with space
-                string wordWithSpace = currentWord.Substring(0, highlightIndex) + " " + currentWord.Substring(highlightIndex + 1);
-                // Sort alphabetically with space at the end
-                List<char> chars = wordWithSpace.ToList();
-                List<char> nonSpaceChars = chars.Where(c => c != ' ').OrderBy(c => c).ToList();
-                List<char> spaceChars = chars.Where(c => c == ' ').ToList();
-                previousGuessWord = new string(nonSpaceChars.Concat(spaceChars).ToArray());
+                // Build guess from space + anagramSources (reversed back, skip first)
+                // GetGameDayData reverses and rotates anagramSources, so we reverse it back
+                // and skip the first element (extra letter) to get the highlight letters
+                string[] anagramSources = gameData.GetAnagramSources();
+                string[] reversed = anagramSources.Reverse().ToArray();
+                previousGuessWord = " " + string.Join("", reversed.Skip(1).Take(anagramIndex));
+                // Highlight index is 0 (the space position)
+                nextHighlightIndex = 0;
             }
             else
             {
-                previousGuessWord = currentWord;
+                // First guess for regular word - build sorted character set with space at end
+                string currentWord = gameData.ReferenceWord(maxWordIndex);
+                string highlightLetter = gameData.HighlightLetter(maxWordIndex);
+                int highlightIndex = currentWord.IndexOf(highlightLetter);
+                if (highlightIndex >= 0)
+                {
+                    // Replace highlight character with space
+                    string wordWithSpace = currentWord.Substring(0, highlightIndex) + " " + currentWord.Substring(highlightIndex + 1);
+                    // Sort alphabetically with space at the end
+                    List<char> chars = wordWithSpace.ToList();
+                    List<char> nonSpaceChars = chars.Where(c => c != ' ').OrderBy(c => c).ToList();
+                    List<char> spaceChars = chars.Where(c => c == ' ').ToList();
+                    previousGuessWord = new string(nonSpaceChars.Concat(spaceChars).ToArray());
+                }
+                else
+                {
+                    previousGuessWord = currentWord;
+                }
+                // For first guess of new wordIndex, space is at the end (based on current refWord length)
+                nextHighlightIndex = refWord.Length - 1;
             }
-            // For first guess of new wordIndex, space is at the end (based on current refWord length)
-            nextHighlightIndex = refWord.Length - 1;
         }
         else
         {
@@ -446,12 +462,27 @@ public class GameService
             }
 
             int wordIndex = status.NextGuess.WordIndex;
+            AppSettings config = isMore ? PlusOneMoreConfig : PlusOneConfig;
             var gameData = new GameDayDataProvider(guessDate, isMore, _connectionString);
             string referenceWord = gameData.ReferenceWord(wordIndex);
             string highlightLetter = gameData.HighlightLetter(wordIndex);
 
-            // Get the base guess (same logic as NextGuess)
-            var (previousGuessWord, currentHighlightIndex) = GetNextGuessBase(status, gameData, wordIndex, referenceWord);
+            // Get the most recent guess for the current wordIndex
+            Guess? previousGuess = status.Guesses.LastOrDefault(g => g.WordIndex == wordIndex);
+            string previousGuessWord;
+            int currentHighlightIndex;
+
+            if (previousGuess != null)
+            {
+                // Use the actual previous guess (user-submitted or hint)
+                previousGuessWord = previousGuess.GuessWord;
+                currentHighlightIndex = previousGuess.HighlightIndex;
+            }
+            else
+            {
+                // No previous guess for this wordIndex - generate default
+                (previousGuessWord, currentHighlightIndex) = GetNextGuessBase(status, gameData, wordIndex, referenceWord, config.AnagramIndex);
+            }
 
             // Generate clues for the current guess (needed for finding target characters)
             List<Clue> currentClues = GetClues(previousGuessWord, referenceWord, currentHighlightIndex, highlightLetter);
@@ -740,15 +771,17 @@ public class GameDayDataProvider
         List<string> charSources = _gameDayData.AnagramSources.ToList();
 
         var sortOrder = new List<int>();
-        for (int i = 0; i < targetGuess.Length; i++)
+        // Process in reverse order to match reversed display and handle duplicates correctly
+        for (int i = targetGuess.Length - 1; i >= 0; i--)
         {
             if (i == highlightIndex) continue; // Skip highlight position
 
             char c = targetGuess[i];
-            int idx = charSources.IndexOf(c.ToString());
+            // Use LastIndexOf to find rightmost occurrence, matching the reversed order
+            int idx = charSources.LastIndexOf(c.ToString());
             if (idx >= 0)
             {
-                sortOrder.Add(idx);
+                sortOrder.Insert(0, idx); // Insert at front since we're going backwards
                 charSources[idx] = ""; // Mark as used for duplicates
             }
         }
