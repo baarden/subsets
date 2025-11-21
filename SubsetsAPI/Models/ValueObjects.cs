@@ -3,7 +3,7 @@
 namespace SubsetsAPI.Models;
 
 public record GameDayData(string ClueWord, string Anagram, string[] AnagramSources, string[] SubsetWords);
-public record GuessData(string GuessText, int ReferenceWordIndex, int GuessNumber, int HighlightIndex);
+public record GuessData(string GuessText, int ReferenceWordIndex, int GuessNumber, int HighlightIndex, bool Hint);
 public record AppSettings (
     int LastPlusOneIndex,
     int AnagramIndex
@@ -24,6 +24,7 @@ public class Status
     public GameState State { get; set; }
     public DateOnly Today { get; set; }
     public int Indent { get; set; }
+    public int Hints { get; set; }
 }
 
 public class Guess
@@ -37,6 +38,7 @@ public class Guess
     public string HighlightLetter { get; set; } = "";
     public int HighlightIndex { get; set; }
     public GuessState State { get; set; }
+    public bool Hint { get; set; }
 }
 
 public class Clue
@@ -56,3 +58,5 @@ public class GuessResponse
 {
     public DateOnly Date { get; set; }
 }
+
+public record HintResponse(char TargetCharacter, int CluePosition, string? Message);

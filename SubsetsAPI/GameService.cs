@@ -69,10 +69,13 @@ public class GameService
                 guessData.HighlightIndex,
                 highlightLetter
             );
+            guess.Hint = guessData.Hint;
             status.Guesses.Add(guess);
 
             maxWordIndex = (guess.State == GuessState.Solved) ? guess.WordIndex + 1 : guess.WordIndex;
         }
+
+        status.Hints = status.Guesses.Count(g => g.Hint);
 
         status.State = (maxWordIndex <= config.AnagramIndex) ? GameState.Unsolved : GameState.Solved;
         string? refWord = null;
@@ -130,45 +133,7 @@ public class GameService
             {
                 refWord = gameData.ReferenceWord(maxWordIndex);
                 // Get the most recent guess and use its characters for NextGuess
-                Guess? previousGuess = status.Guesses.LastOrDefault();
-                string previousGuessWord = previousGuess?.GuessWord ?? "";
-                int nextHighlightIndex = 0;
-
-                // Check if this is the first guess for a new wordIndex
-                bool isFirstGuessForWordIndex = previousGuess == null || previousGuess.WordIndex != maxWordIndex;
-
-                if (isFirstGuessForWordIndex)
-                {
-                    // First guess for this wordIndex
-                    if (string.IsNullOrEmpty(previousGuessWord))
-                    {
-                        // Very first guess of the game (wordIndex 0)
-                        string firstWord = gameData.ReferenceWord(0);
-                        string highlightLetter = gameData.HighlightLetter(0);
-                        int highlightIndex = firstWord.IndexOf(highlightLetter);
-                        if (highlightIndex >= 0)
-                        {
-                            // Replace highlight character with space
-                            string wordWithSpace = firstWord.Substring(0, highlightIndex) + " " + firstWord.Substring(highlightIndex + 1);
-                            // Sort alphabetically with space at the end
-                            List<char> chars = wordWithSpace.ToList();
-                            List<char> nonSpaceChars = chars.Where(c => c != ' ').OrderBy(c => c).ToList();
-                            List<char> spaceChars = chars.Where(c => c == ' ').ToList();
-                            previousGuessWord = new string(nonSpaceChars.Concat(spaceChars).ToArray());
-                        }
-                        else
-                        {
-                            previousGuessWord = firstWord;
-                        }
-                    }
-                    // For first guess of new wordIndex, space is at the end (based on current refWord length)
-                    nextHighlightIndex = refWord.Length - 1;
-                }
-                else
-                {
-                    // Keep the highlight index from the most recent guess for this wordIndex
-                    nextHighlightIndex = previousGuess!.HighlightIndex;
-                }
+                var (previousGuessWord, nextHighlightIndex) = GetNextGuessBase(status, gameData, maxWordIndex, refWord);
 
                 // Create a guess with spaces to get Empty clue types
                 string emptyGuess = new string(' ', refWord.Length);
@@ -299,6 +264,50 @@ public class GameService
         throw new Exception("Unable to read statistics!");
     }
 
+    private static (string previousGuessWord, int highlightIndex) GetNextGuessBase(
+        Status status,
+        GameDayDataProvider gameData,
+        int maxWordIndex,
+        string refWord)
+    {
+        Guess? previousGuess = status.Guesses.LastOrDefault();
+        string previousGuessWord = previousGuess?.GuessWord ?? "";
+        int nextHighlightIndex = 0;
+
+        // Check if this is the first guess for a new wordIndex
+        bool isFirstGuessForWordIndex = previousGuess == null || previousGuess.WordIndex != maxWordIndex;
+
+        if (isFirstGuessForWordIndex)
+        {
+            // First guess for this wordIndex - build sorted character set with space at end
+            string currentWord = gameData.ReferenceWord(maxWordIndex);
+            string highlightLetter = gameData.HighlightLetter(maxWordIndex);
+            int highlightIndex = currentWord.IndexOf(highlightLetter);
+            if (highlightIndex >= 0)
+            {
+                // Replace highlight character with space
+                string wordWithSpace = currentWord.Substring(0, highlightIndex) + " " + currentWord.Substring(highlightIndex + 1);
+                // Sort alphabetically with space at the end
+                List<char> chars = wordWithSpace.ToList();
+                List<char> nonSpaceChars = chars.Where(c => c != ' ').OrderBy(c => c).ToList();
+                List<char> spaceChars = chars.Where(c => c == ' ').ToList();
+                previousGuessWord = new string(nonSpaceChars.Concat(spaceChars).ToArray());
+            }
+            else
+            {
+                previousGuessWord = currentWord;
+            }
+            // For first guess of new wordIndex, space is at the end (based on current refWord length)
+            nextHighlightIndex = refWord.Length - 1;
+        }
+        else
+        {
+            // Keep the highlight index from the most recent guess for this wordIndex
+            nextHighlightIndex = previousGuess!.HighlightIndex;
+        }
+
+        return (previousGuessWord, nextHighlightIndex);
+    }
 
     private List<GuessData> FetchGuessData(int userId, DateOnly playDate, bool isMore)
     {
@@ -308,7 +317,7 @@ public class GameService
         conn.Open();
 
         string guessQuery = @"
-            SELECT Guess, GuessWordIdx, GuessNumber, HighlightIdx
+            SELECT Guess, GuessWordIdx, GuessNumber, HighlightIdx, COALESCE(Hint, false) as Hint
             FROM Guess
             WHERE UserId = @UserId
                 AND IsMore = @IsMore
@@ -328,12 +337,14 @@ public class GameService
             int referenceWordIndex = (int)reader["GuessWordIdx"];
             int guessNumber = (int)reader["GuessNumber"];
             int highlightIndex = (int)reader["HighlightIdx"];
+            bool hint = (bool)reader["Hint"];
 
             var data = new GuessData(
                 GuessText: guessText,
                 ReferenceWordIndex: referenceWordIndex,
                 GuessNumber: guessNumber,
-                HighlightIndex: highlightIndex);
+                HighlightIndex: highlightIndex,
+                Hint: hint);
             guesses.Add(data);
         }
 
@@ -422,6 +433,150 @@ public class GameService
         return clues;
     }
 
+    public (char, int, string?) GenerateHint(int userId, DateOnly guessDate, bool isMore)
+    {
+        try
+        {
+            // Get current game status
+            var (status, refWord) = GetStatus(userId, guessDate, isMore);
+
+            if (status.NextGuess == null || refWord == null)
+            {
+                return ('\0', 0, "No active word to hint for");
+            }
+
+            int wordIndex = status.NextGuess.WordIndex;
+            var gameData = new GameDayDataProvider(guessDate, isMore, _connectionString);
+            string referenceWord = gameData.ReferenceWord(wordIndex);
+            string highlightLetter = gameData.HighlightLetter(wordIndex);
+
+            // Get the base guess (same logic as NextGuess)
+            var (previousGuessWord, currentHighlightIndex) = GetNextGuessBase(status, gameData, wordIndex, referenceWord);
+
+            // Generate clues for the current guess (needed for finding target characters)
+            List<Clue> currentClues = GetClues(previousGuessWord, referenceWord, currentHighlightIndex, highlightLetter);
+
+            // Check all previous guesses to find positions that have EVER been AllCorrect
+            HashSet<int> positionsWithAllCorrect = new HashSet<int>();
+            foreach (var guess in status.Guesses.Where(g => g.WordIndex == wordIndex))
+            {
+                for (int i = 0; i < guess.Characters.Count; i++)
+                {
+                    if (guess.Characters[i].Type == ClueType.AllCorrect)
+                    {
+                        positionsWithAllCorrect.Add(i);
+                    }
+                }
+            }
+
+            // Find eligible clue positions: never received AllCorrect
+            List<int> eligiblePositions = new List<int>();
+            for (int i = 0; i < referenceWord.Length; i++)
+            {
+                if (!positionsWithAllCorrect.Contains(i))
+                {
+                    eligiblePositions.Add(i);
+                }
+            }
+
+        if (eligiblePositions.Count == 0)
+        {
+            return ('\0', 0, "No more hints are available");
+        }
+
+        // Shuffle eligible positions and try each until we find one with a valid target character
+        Random random = new Random();
+        var shuffledPositions = eligiblePositions.OrderBy(x => random.Next()).ToList();
+
+        int cluePosition = -1;
+        int targetIndex = -1;
+        char correctChar = '\0';
+
+        foreach (int pos in shuffledPositions)
+        {
+            correctChar = referenceWord[pos];
+
+            // Find target character: matching correctChar, not at AllCorrect position, not at highlightIndex
+            for (int i = 0; i < previousGuessWord.Length; i++)
+            {
+                if (i != currentHighlightIndex &&
+                    previousGuessWord[i] == correctChar &&
+                    currentClues[i].Type != ClueType.AllCorrect)
+                {
+                    targetIndex = i;
+                    cluePosition = pos;
+                    break;
+                }
+            }
+
+            if (targetIndex != -1)
+            {
+                break;
+            }
+        }
+
+        if (targetIndex == -1)
+        {
+            return ('\0', 0, "No more hints are available.");
+        }
+
+        // Shift the character from targetIndex to cluePosition
+        List<char> guessChars = previousGuessWord.ToList();
+        char targetChar = guessChars[targetIndex];
+
+        // Remove from source position
+        guessChars.RemoveAt(targetIndex);
+
+        // Insert at destination position
+        // When moving right (targetIndex < cluePosition), after removal, the original cluePosition
+        // still points to where we want to insert (after what was there)
+        guessChars.Insert(cluePosition, targetChar);
+
+        string hintGuess = new string(guessChars.ToArray());
+
+        // Update highlightIndex if it was shifted by the move
+        int newHighlightIndex = currentHighlightIndex;
+        if (targetIndex < cluePosition)
+        {
+            // Character moved right, positions in between shift left
+            if (currentHighlightIndex > targetIndex && currentHighlightIndex <= cluePosition)
+            {
+                newHighlightIndex = currentHighlightIndex - 1;
+            }
+        }
+        else
+        {
+            // Character moved left, positions in between shift right
+            if (currentHighlightIndex >= cluePosition && currentHighlightIndex < targetIndex)
+            {
+                newHighlightIndex = currentHighlightIndex + 1;
+            }
+        }
+
+        // Save the hint guess
+        int guessNumber = status.Guesses.Count + 1;
+        var (inserted, errorMessage) = AddHintGuess(
+            userId,
+            guessDate,
+            guessNumber,
+            wordIndex,
+            hintGuess,
+            newHighlightIndex,
+            isMore);
+
+            if (!inserted)
+            {
+                return ('\0', 0, errorMessage ?? "Failed to save hint");
+            }
+
+            return (targetChar, cluePosition, null);
+        }
+        catch (Exception e)
+        {
+            return ('\0', 0, e.Message);
+        }
+    }
+
     public (bool, string?) AddGuess(
         int userId,
         DateOnly guessDate,
@@ -455,8 +610,8 @@ public class GameService
         bool solved = guessData.Characters.All(c => c.Type == ClueType.AllCorrect);
 
         string insertQuery = @"
-            INSERT INTO Guess (UserId, IsMore, GuessDate, GuessNumber, GuessWordIdx, Guess, HighlightIdx, Solved)
-            VALUES (@UserId, @IsMore, @GuessDate, @GuessNumber, @GuessWordIndex, @Guess, @HighlightIdx, @Solved);
+            INSERT INTO Guess (UserId, IsMore, GuessDate, GuessNumber, GuessWordIdx, Guess, HighlightIdx, Solved, Hint)
+            VALUES (@UserId, @IsMore, @GuessDate, @GuessNumber, @GuessWordIndex, @Guess, @HighlightIdx, @Solved, @Hint);
         ";
 
         using var cmd = new NpgsqlCommand(insertQuery, conn);
@@ -468,6 +623,45 @@ public class GameService
         cmd.Parameters.AddWithValue("@Guess", guess);
         cmd.Parameters.AddWithValue("@HighlightIdx", highlightIndex);
         cmd.Parameters.AddWithValue("@Solved", solved);
+        cmd.Parameters.AddWithValue("@Hint", false);
+
+        int result = cmd.ExecuteNonQuery();
+        return (result == 1, null);
+    }
+
+    private (bool, string?) AddHintGuess(
+        int userId,
+        DateOnly guessDate,
+        int guessNumber,
+        int guessWordIndex,
+        string guess,
+        int highlightIndex,
+        bool isMore)
+    {
+        var gameData = new GameDayDataProvider(guessDate, isMore, _connectionString);
+        string refWord = gameData.ReferenceWord(guessWordIndex);
+
+        Guess guessData = GetGuess(0, guess, refWord, guessWordIndex, 0, highlightIndex);
+        bool solved = guessData.Characters.All(c => c.Type == ClueType.AllCorrect);
+
+        using var conn = new NpgsqlConnection(_connectionString);
+        conn.Open();
+
+        string insertQuery = @"
+            INSERT INTO Guess (UserId, IsMore, GuessDate, GuessNumber, GuessWordIdx, Guess, HighlightIdx, Solved, Hint)
+            VALUES (@UserId, @IsMore, @GuessDate, @GuessNumber, @GuessWordIndex, @Guess, @HighlightIdx, @Solved, @Hint);
+        ";
+
+        using var cmd = new NpgsqlCommand(insertQuery, conn);
+        cmd.Parameters.AddWithValue("@UserId", userId);
+        cmd.Parameters.AddWithValue("@IsMore", isMore);
+        cmd.Parameters.AddWithValue("@GuessDate", guessDate);
+        cmd.Parameters.AddWithValue("@GuessNumber", guessNumber);
+        cmd.Parameters.AddWithValue("@GuessWordIndex", guessWordIndex);
+        cmd.Parameters.AddWithValue("@Guess", guess);
+        cmd.Parameters.AddWithValue("@HighlightIdx", highlightIndex);
+        cmd.Parameters.AddWithValue("@Solved", solved);
+        cmd.Parameters.AddWithValue("@Hint", true);
 
         int result = cmd.ExecuteNonQuery();
         return (result == 1, null);

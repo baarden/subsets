@@ -115,6 +115,34 @@ public partial class ApiController : ControllerBase
         return Ok();
     }
 
+    [HttpPost("hint")]
+    [HttpPost("more/hint")]
+    public ActionResult<HintResponse> PostHint()
+    {
+        bool isMore = HttpContext.Request.Path.StartsWithSegments("/api/more");
+
+        int? userId = GetUser();
+        if (userId == null) { return Unauthorized("User not found."); }
+
+        DateOnly today = GetDate();
+
+        try
+        {
+            var (targetChar, cluePosition, errorMessage) = _gameService.GenerateHint((int)userId, today, isMore);
+
+            if (errorMessage != null)
+            {
+                return BadRequest(new HintResponse('\0', 0, errorMessage));
+            }
+
+            return Ok(new HintResponse(targetChar, cluePosition, null));
+        }
+        catch (Exception e)
+        {
+            return BadRequest(new HintResponse('\0', 0, e.Message));
+        }
+    }
+
     private static string? ValidateGuess(string guess, DateOnly today, string? refWord, Status status, bool isMore)
     {
         Regex regex = isMore ? PlusOneMoreGuessRegex() : PlusOneGuessRegex();
